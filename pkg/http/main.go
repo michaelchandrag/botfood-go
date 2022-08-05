@@ -3,13 +3,11 @@ package http
 import (
 	"fmt"
 
-	logger "github.com/michaelchandrag/botfood-go/lib/logger"
 	healthRoutes "github.com/michaelchandrag/botfood-go/pkg/health/routes"
 	utils "github.com/michaelchandrag/botfood-go/utils"
 
 	gin "github.com/gin-gonic/gin"
 	"github.com/gin-contrib/cors"
-	"go.uber.org/zap"
 )
 
 type ServerHTTP struct {
@@ -22,7 +20,6 @@ const (
 )
 
 func ServeHTTP (port string) error {
-	serverLogger := logger.GetLogger()
 
 	serverHTTP := ServerHTTP{}
 	serverHTTP.Router = gin.Default()
@@ -39,10 +36,9 @@ func ServeHTTP (port string) error {
 	if port == "" {
 		port = "8080"
 	}
-	serverLogger.Info("Server UP ", zap.String("port", port))
 	serverHTTP.Router.Use(cors.New(cors.Config{
 		AllowMethods:     []string{"GET", "POST", "OPTIONS", "DELETE", "PUT", "PATCH"},
-		AllowHeaders:     []string{"Origin", "authorization", "Content-Length", "Content-Type", "User-Agent", "Referrer", "Host", "Token"},
+		AllowHeaders:     []string{"Origin", "Authorization", "Content-Length", "Content-Type", "User-Agent", "Referrer", "Host", "Token"},
 		ExposeHeaders:    []string{"Content-Length", "Access-Control-Allow-Origin", "Access-Control-Allow-Headers", "Content-Type"},
 		AllowCredentials: true,
 		AllowOrigins:     []string{"*"},

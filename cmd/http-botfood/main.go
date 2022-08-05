@@ -9,12 +9,14 @@ import (
 	"syscall"
 	http "github.com/michaelchandrag/botfood-go/pkg/http"
 	utils "github.com/michaelchandrag/botfood-go/utils"
+	log "github.com/michaelchandrag/botfood-go/lib/log"
 )
 
 func main () {
 	var wg sync.WaitGroup
 	var errChan = make(chan error, 1)
 
+	log.Logger.Info("Running Application BotFood")
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
