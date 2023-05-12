@@ -202,7 +202,6 @@ func (r *repository) FindPaginated(filter Filter) (result PaginatedData, err err
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		fmt.Println(formattedQuery)
 		err = r.db.GetDB().Select(&result.Data, formattedQuery)
 		if err != nil {
 			fmt.Println(err)
