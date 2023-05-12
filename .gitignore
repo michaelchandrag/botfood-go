@@ -1,2 +1,4 @@
 public/Logs/*
 !public/Logs/.keep
+
+.env
