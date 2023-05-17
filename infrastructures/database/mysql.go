@@ -25,7 +25,6 @@ func ConnectMainDB() (db *sqlx.DB, err error) {
 	dbName := utils.GetEnv("BOTFOOD_DB_NAME", "botfood")
 	dbUser := utils.GetEnv("BOTFOOD_DB_USER", "user")
 	dbPass := utils.GetEnv("BOTFOOD_DB_PASS", "pass")
-	fmt.Println(dbHost, dbPort, dbName, dbUser, dbPass)
 
 	sHost := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPass, dbHost, dbPort, dbName)
 
