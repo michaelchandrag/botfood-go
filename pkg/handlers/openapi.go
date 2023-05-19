@@ -24,18 +24,18 @@ func (h *Handler) PostConsumeMessageQueueAction(c *gin.Context) {
 	}
 
 	if payload.Type == "activity-outlet" {
-		for key, data := range payload.DataOutlet {
-			payload.DataOutlet[key].IsOpen = utils.Itob(data.PayloadIsOpen)
+		for key, data := range payload.DataOutlets {
+			payload.DataOutlets[key].IsOpen = utils.Itob(data.PayloadIsOpen)
 		}
 	} else if payload.Type == "activity-item" {
-		for key, data := range payload.DataItem.ItemNew {
-			payload.DataItem.ItemNew[key].InStock = utils.Itob(data.PayloadInStock)
+		for key, data := range payload.DataItems.ItemNew {
+			payload.DataItems.ItemNew[key].InStock = utils.Itob(data.PayloadInStock)
 		}
-		for key, data := range payload.DataItem.ItemChange {
-			payload.DataItem.ItemChange[key].InStock = utils.Itob(data.PayloadInStock)
+		for key, data := range payload.DataItems.ItemChange {
+			payload.DataItems.ItemChange[key].InStock = utils.Itob(data.PayloadInStock)
 		}
-		for key, data := range payload.DataItem.ItemDelete {
-			payload.DataItem.ItemDelete[key].InStock = utils.Itob(data.PayloadInStock)
+		for key, data := range payload.DataItems.ItemDelete {
+			payload.DataItems.ItemDelete[key].InStock = utils.Itob(data.PayloadInStock)
 		}
 	}
 	payload.RawMessage = string(rawMessage)

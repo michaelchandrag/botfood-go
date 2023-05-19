@@ -13,8 +13,8 @@ import (
 	"github.com/michaelchandrag/botfood-go/internal/logger"
 	"github.com/michaelchandrag/botfood-go/utils"
 
-	dto "github.com/michaelchandrag/botfood-go/pkg/modules/messaging/dto"
-	service "github.com/michaelchandrag/botfood-go/pkg/modules/messaging/services"
+	dto "github.com/michaelchandrag/botfood-go/pkg/modules/openapi/dto"
+	service "github.com/michaelchandrag/botfood-go/pkg/modules/openapi/services"
 )
 
 func GetQueueURL(sess *session.Session, queue string) (*sqs.GetQueueUrlOutput, error) {

@@ -5,13 +5,9 @@ type ConsumerRequestPayload struct {
 	MessageSlug string
 	BrandID     int                          `json:"brand_id"`
 	Type        string                       `json:"type"`
-	DataOutlet  []ConsumerRequestDataPayload `json:"data_outlet"`
-	DataItem    struct {
-		ItemNew    []ConsumerRequestItemDataPayload `json:"new"`
-		ItemChange []ConsumerRequestItemDataPayload `json:"change"`
-		ItemDelete []ConsumerRequestItemDataPayload `json:"delete"`
-	} `json:"data_item"`
-	RawMessage string
+	DataOutlets []ConsumerRequestDataPayload `json:"data_outlets"`
+	DataItems   ConsumerDataItems            `json:"data_items"`
+	RawMessage  string
 }
 
 type ConsumerRequestDataPayload struct {
@@ -24,6 +20,12 @@ type ConsumerRequestDataPayload struct {
 	IssuedAt             string  `json:"issued_at"`
 }
 
+type ConsumerDataItems struct {
+	ItemNew    []ConsumerRequestItemDataPayload `json:"new,omitempty"`
+	ItemChange []ConsumerRequestItemDataPayload `json:"change,omitempty"`
+	ItemDelete []ConsumerRequestItemDataPayload `json:"delete,omitempty"`
+}
+
 type ConsumerRequestItemDataPayload struct {
 	BranchChannelID      int    `json:"branch_channel_id"`
 	BranchChannelName    string `json:"branch_channel_name"`
@@ -32,4 +34,26 @@ type ConsumerRequestItemDataPayload struct {
 	PayloadInStock       int    `json:"in_stock"`
 	InStock              bool
 	IssuedAt             string `json:"issued_at"`
+}
+
+func (dataOutlet *ConsumerRequestDataPayload) ToWebhookOutletRequestPayload() WebhookOutletRequestPayload {
+	return WebhookOutletRequestPayload{
+		BranchChannelID:      dataOutlet.BranchChannelID,
+		BranchChannelName:    dataOutlet.BranchChannelName,
+		BranchChannelChannel: dataOutlet.BranchChannelChannel,
+		IsOpen:               dataOutlet.IsOpen,
+		Rating:               dataOutlet.Rating,
+		IssuedAt:             dataOutlet.IssuedAt,
+	}
+}
+
+func (dataItem *ConsumerRequestItemDataPayload) ToWebhookItemRequestPayload() WebhookItemRequestPayload {
+	return WebhookItemRequestPayload{
+		BranchChannelID:      dataItem.BranchChannelID,
+		BranchChannelName:    dataItem.BranchChannelName,
+		BranchChannelChannel: dataItem.BranchChannelChannel,
+		ItemSlug:             dataItem.ItemSlug,
+		InStock:              dataItem.InStock,
+		IssuedAt:             dataItem.IssuedAt,
+	}
 }

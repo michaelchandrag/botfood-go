@@ -11,6 +11,7 @@ Deployment Production
 ```
 cd /var/www/botfood-go
 GOOS=linux GOARCH=amd64 go build -o build cmd/http-botfood/main.go
+sudo supervisorctl reload
 ```
 
 Supervisor configuration
