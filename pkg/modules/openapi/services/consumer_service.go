@@ -13,6 +13,7 @@ import (
 	brand_repository "github.com/michaelchandrag/botfood-go/pkg/modules/openapi/repositories/brand"
 	message_queue_repository "github.com/michaelchandrag/botfood-go/pkg/modules/openapi/repositories/message_queue"
 	webhook_log_repository "github.com/michaelchandrag/botfood-go/pkg/modules/openapi/repositories/webhook_log"
+	"github.com/michaelchandrag/botfood-go/utils"
 )
 
 func (s *service) ConsumeActivityMessage(payload dto.ConsumerRequestPayload) (response dto.ConsumerResponsePayload) {
@@ -82,7 +83,7 @@ func (s *service) ConsumeActivityMessage(payload dto.ConsumerRequestPayload) (re
 			webhookBody.DataItems = &webhookDataItem
 		}
 
-		go s.sendWebhook(existsBrand.WebhookURL, webhookBody, payload.BrandID)
+		go s.sendWebhook(existsBrand.WebhookURL, webhookBody, existsBrand)
 
 	} else {
 		response.Errors.AddHTTPError(400, errors.New("Message Queue already exists"))
@@ -92,11 +93,11 @@ func (s *service) ConsumeActivityMessage(payload dto.ConsumerRequestPayload) (re
 	return response
 }
 
-func (s *service) sendWebhook(url string, payload dto.WebhookRequestPayload, brandId int) {
+func (s *service) sendWebhook(url string, payload dto.WebhookRequestPayload, brand entities.Brand) {
 	requestBody, _ := json.Marshal(payload)
 	logRepository := webhook_log_repository.NewRepository(s.db)
 	logObj := entities.WebhookLog{
-		BrandID:     brandId,
+		BrandID:     int(brand.ID),
 		RequestURL:  url,
 		RequestBody: string(requestBody),
 	}
@@ -104,9 +105,15 @@ func (s *service) sendWebhook(url string, payload dto.WebhookRequestPayload, bra
 	trials := [3]int{0, 1, 2}
 	for _, secs := range trials {
 		time.Sleep(time.Duration(secs) * time.Second)
+		now := time.Now()
+		timestamp := now.Unix()
+		recipe := fmt.Sprintf("%s:%d", *brand.ApiKey, timestamp)
+		partnerToken := utils.GenerateHMAC256(recipe, *brand.SecretKey)
 		var theResult interface{}
 		client := resty.New()
 		resp, err := client.R().
+			SetHeader("X-Timestamp", fmt.Sprintf("%d", timestamp)).
+			SetHeader("X-Partner-Token", partnerToken).
 			SetHeader("Content-Type", "application/json").
 			SetBody(payload).
 			SetResult(&theResult). // or SetResult(AuthSuccess{}).

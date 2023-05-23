@@ -52,8 +52,6 @@ func OpenApiMiddleware(h Handler) gin.HandlerFunc {
 		}
 
 		recipe := fmt.Sprintf("%s:%s", apiKey, timestamp)
-		fmt.Println(recipe)
-		fmt.Println(*brand.SecretKey)
 		expectedToken := utils.GenerateHMAC256(recipe, *brand.SecretKey)
 
 		if expectedToken != tokenPartner {
