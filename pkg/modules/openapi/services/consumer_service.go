@@ -8,27 +8,12 @@ import (
 
 	"github.com/go-resty/resty/v2"
 
-	"github.com/michaelchandrag/botfood-go/infrastructures/database"
 	"github.com/michaelchandrag/botfood-go/pkg/modules/openapi/dto"
 	"github.com/michaelchandrag/botfood-go/pkg/modules/openapi/entities"
 	brand_repository "github.com/michaelchandrag/botfood-go/pkg/modules/openapi/repositories/brand"
 	message_queue_repository "github.com/michaelchandrag/botfood-go/pkg/modules/openapi/repositories/message_queue"
 	webhook_log_repository "github.com/michaelchandrag/botfood-go/pkg/modules/openapi/repositories/webhook_log"
 )
-
-type ConsumerService interface {
-	ConsumeActivityMessage(payload dto.ConsumerRequestPayload) (response dto.ConsumerResponsePayload)
-}
-
-type service struct {
-	db database.MainDB
-}
-
-func RegisterConsumerService(db database.MainDB) ConsumerService {
-	return &service{
-		db: db,
-	}
-}
 
 func (s *service) ConsumeActivityMessage(payload dto.ConsumerRequestPayload) (response dto.ConsumerResponsePayload) {
 

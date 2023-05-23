@@ -18,8 +18,9 @@ type repository struct {
 }
 
 type Filter struct {
-	ID   *int
-	Slug string
+	ID     *int
+	Slug   string
+	ApiKey string
 }
 
 func NewRepository(db database.MainDB) Repository {
@@ -35,6 +36,8 @@ func getQueryBuilder() string {
 			brands.name,
 			brands.slug,
 			brands.webhook_url,
+			brands.api_key,
+			brands.secret_key,
 			brands.created_at,
 			brands.updated_at
 		FROM
@@ -52,6 +55,10 @@ func generateFilter(filter Filter) string {
 
 	if len(filter.Slug) > 0 {
 		where.And("brands.slug = ?", filter.Slug)
+	}
+
+	if len(filter.ApiKey) > 0 {
+		where.And("brands.api_key = ?", filter.ApiKey)
 	}
 
 	where.And("brands.deleted_at IS NULL")

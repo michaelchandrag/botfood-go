@@ -22,4 +22,13 @@ func (serverHTTP *ServerHTTP) registerRoutes(h handlers.Handler) {
 	openApi := serverHTTP.Router.Group("/boa/v1")
 	openApi.POST("/consume_message_queue", h.PostConsumeMessageQueueAction)
 
+	openApiBranchChannel := openApi.Group("/branch_channel")
+	openApiBranchChannel.Use(handlers.OpenApiMiddleware(h))
+	openApiBranchChannel.GET("/list", h.GetOpenApiBranchChannelListAction)
+	openApiBranchChannel.GET("/detail/:branch_channel_id", h.GetOpenApiBranchChannelDetailAction)
+
+	openApiItem := openApi.Group("/item")
+	openApiItem.Use(handlers.OpenApiMiddleware(h))
+	openApiItem.GET("/list", h.GetOpenApiItemListAction)
+
 }
