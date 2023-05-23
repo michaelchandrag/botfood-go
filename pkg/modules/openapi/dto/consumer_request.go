@@ -32,6 +32,7 @@ type ConsumerRequestItemDataPayload struct {
 	BranchChannelChannel string `json:"branch_channel_channel"`
 	ItemID               int    `json:"item_id"`
 	ItemSlug             string `json:"item_slug"`
+	ItemName             string `json:"item_name"`
 	PayloadInStock       int    `json:"in_stock"`
 	InStock              bool
 	IssuedAt             string `json:"issued_at"`
@@ -55,6 +56,7 @@ func (dataItem *ConsumerRequestItemDataPayload) ToWebhookItemRequestPayload() We
 		BranchChannelChannel: dataItem.BranchChannelChannel,
 		ItemID:               dataItem.ItemID,
 		ItemSlug:             dataItem.ItemSlug,
+		ItemName:             dataItem.ItemName,
 		InStock:              dataItem.InStock,
 		IssuedAt:             dataItem.IssuedAt,
 	}

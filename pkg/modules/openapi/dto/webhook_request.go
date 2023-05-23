@@ -21,6 +21,7 @@ type WebhookItemRequestPayload struct {
 	BranchChannelChannel string `json:"branch_channel_channel"`
 	ItemSlug             string `json:"item_slug"`
 	ItemID               int    `json:"item_id"`
+	ItemName             string `json:"item_name"`
 	InStock              bool   `json:"in_stock"`
 	IssuedAt             string `json:"issued_at"`
 }
