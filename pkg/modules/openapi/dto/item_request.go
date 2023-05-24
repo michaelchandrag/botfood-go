@@ -11,8 +11,10 @@ type OpenApiItemRequestPayload struct {
 	PayloadInStock         string `form:"in_stock"`
 	InStock                *int
 
-	Page      *int   `form:"page"`
-	Data      *int   `form:"data"`
-	SortKey   string `form:"sort_key"`
-	SortValue string `form:"sort_value"`
+	PayloadPage string `form:"page"`
+	PayloadData string `form:"data"`
+	Page        *int
+	Data        *int
+	SortKey     string `form:"sort_key"`
+	SortValue   string `form:"sort_value"`
 }

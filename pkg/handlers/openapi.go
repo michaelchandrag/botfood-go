@@ -74,6 +74,16 @@ func (h *Handler) GetOpenApiBranchChannelListAction(c *gin.Context) {
 		branchChannelPayload.IsOpen = &isOpen
 	}
 
+	page, err := strconv.Atoi(branchChannelPayload.PayloadPage)
+	if err == nil {
+		branchChannelPayload.Page = &page
+	}
+
+	data, err := strconv.Atoi(branchChannelPayload.PayloadData)
+	if err == nil {
+		branchChannelPayload.Data = &data
+	}
+
 	serviceResult := h.openApiService.GetBranchChannels(branchChannelPayload)
 	if serviceResult.Errors.HasErrors() {
 		h.deliverError(c, serviceResult.Errors)
@@ -137,6 +147,16 @@ func (h *Handler) GetOpenApiItemListAction(c *gin.Context) {
 	if len(itemPayload.PayloadInStock) > 0 {
 		inStock, _ := strconv.Atoi(itemPayload.PayloadInStock)
 		itemPayload.InStock = &inStock
+	}
+
+	page, err := strconv.Atoi(itemPayload.PayloadPage)
+	if err == nil {
+		itemPayload.Page = &page
+	}
+
+	data, err := strconv.Atoi(itemPayload.PayloadData)
+	if err == nil {
+		itemPayload.Data = &data
 	}
 
 	serviceResult := h.openApiService.GetItems(itemPayload)
