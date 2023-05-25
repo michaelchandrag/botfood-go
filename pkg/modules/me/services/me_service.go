@@ -6,6 +6,7 @@ import (
 
 	"github.com/michaelchandrag/botfood-go/infrastructures/database"
 	dto "github.com/michaelchandrag/botfood-go/pkg/modules/me/dto"
+	entities "github.com/michaelchandrag/botfood-go/pkg/modules/me/entities"
 	review_repository "github.com/michaelchandrag/botfood-go/pkg/modules/me/repositories/review"
 	"github.com/michaelchandrag/botfood-go/utils"
 )
@@ -60,7 +61,11 @@ func (s *service) GetReviews(payload dto.MeReviewsRequestPayload) (response dto.
 			}
 		}
 	}
-	response.Data.Reviews = reviews.Data
+	if reviews.Data != nil {
+		response.Data.Reviews = reviews.Data
+	} else {
+		response.Data.Reviews = []entities.Review{}
+	}
 	response.Data.CurrentPage = reviews.CurrentPage
 	response.Data.LimitData = reviews.LimitData
 	response.Data.TotalPage = reviews.TotalPage
