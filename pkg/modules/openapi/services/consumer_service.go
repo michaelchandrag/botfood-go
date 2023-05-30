@@ -83,7 +83,7 @@ func (s *service) ConsumeActivityMessage(payload dto.ConsumerRequestPayload) (re
 			webhookBody.DataItems = &webhookDataItem
 		}
 
-		go s.sendWebhook(existsBrand.WebhookURL, webhookBody, existsBrand)
+		go s.sendWebhook(*existsBrand.WebhookURL, webhookBody, existsBrand)
 
 	} else {
 		response.Errors.AddHTTPError(400, errors.New("Message Queue already exists"))
@@ -94,6 +94,9 @@ func (s *service) ConsumeActivityMessage(payload dto.ConsumerRequestPayload) (re
 }
 
 func (s *service) sendWebhook(url string, payload dto.WebhookRequestPayload, brand entities.Brand) {
+	if url == "" {
+		return
+	}
 	requestBody, _ := json.Marshal(payload)
 	logRepository := webhook_log_repository.NewRepository(s.db)
 	logObj := entities.WebhookLog{

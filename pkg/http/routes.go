@@ -31,4 +31,12 @@ func (serverHTTP *ServerHTTP) registerRoutes(h handlers.Handler) {
 	openApiItem.Use(handlers.OpenApiMiddleware(h))
 	openApiItem.GET("/list", h.GetOpenApiItemListAction)
 
+	openApiReview := openApi.Group("/review")
+	openApiReview.Use(handlers.OpenApiMiddleware(h))
+	openApiReview.GET("/list", h.GetOpenApiReviewListAction)
+
+	openApiReport := openApi.Group("/report")
+	openApiReport.Use(handlers.OpenApiMiddleware(h))
+	openApiReport.GET("/item_availability_report/list", h.GetOpenApiItemAvailabilityReportListAction)
+
 }

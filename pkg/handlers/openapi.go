@@ -3,8 +3,10 @@ package handlers
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/michaelchandrag/botfood-go/pkg/modules/openapi/dto"
@@ -160,6 +162,96 @@ func (h *Handler) GetOpenApiItemListAction(c *gin.Context) {
 	}
 
 	serviceResult := h.openApiService.GetItems(itemPayload)
+	if serviceResult.Errors.HasErrors() {
+		h.deliverError(c, serviceResult.Errors)
+		return
+	}
+
+	h.deliverJSON(c, serviceResult.Data)
+	return
+}
+
+func (h *Handler) GetOpenApiReviewListAction(c *gin.Context) {
+
+	var customError error.ErrorCollection
+	authBrand, existsAuthBrand := c.Get("open_api_brand")
+	if !existsAuthBrand {
+		customError.AddHTTPError(401, errors.New("Unauthorized. Missing partner"))
+		h.deliverError(c, customError)
+		return
+	}
+
+	brand := authBrand.(entities.Brand)
+
+	var reviewPayload dto.OpenApiReviewsRequestPayload
+	c.Bind(&reviewPayload)
+	authBrandID := int(brand.ID)
+	reviewPayload.BrandID = &authBrandID
+	if reviewPayload.QueryWithComment == "0" {
+		reviewPayload.WithComment = true
+	}
+
+	if reviewPayload.QueryWithImages == "0" {
+		reviewPayload.WithImages = true
+	}
+
+	if reviewPayload.QueryWithMerchantReply == "0" {
+		reviewPayload.WithMerchantReply = true
+	}
+
+	if reviewPayload.PayloadBranchChannelID != "" {
+		bcId, _ := strconv.Atoi(reviewPayload.PayloadBranchChannelID)
+		reviewPayload.BranchChannelID = &bcId
+	}
+
+	if reviewPayload.PayloadRating != "" {
+		rating, _ := strconv.Atoi(reviewPayload.PayloadRating)
+		reviewPayload.Rating = &rating
+	}
+
+	serviceResult := h.openApiService.GetReviews(reviewPayload)
+	if serviceResult.Errors.HasErrors() {
+		h.deliverError(c, serviceResult.Errors)
+		return
+	}
+
+	h.deliverJSON(c, serviceResult.Data)
+	return
+}
+
+func (h *Handler) GetOpenApiItemAvailabilityReportListAction(c *gin.Context) {
+
+	var customError error.ErrorCollection
+	authBrand, existsAuthBrand := c.Get("open_api_brand")
+	if !existsAuthBrand {
+		customError.AddHTTPError(401, errors.New("Unauthorized. Missing partner"))
+		h.deliverError(c, customError)
+		return
+	}
+
+	brand := authBrand.(entities.Brand)
+
+	var reportPayload dto.OpenApiReportItemAvailabilityReportsRequestPayload
+	c.Bind(&reportPayload)
+	authBrandID := int(brand.ID)
+	reportPayload.BrandID = &authBrandID
+
+	if reportPayload.PayloadBranchChannelID != "" {
+		bcId, _ := strconv.Atoi(reportPayload.PayloadBranchChannelID)
+		reportPayload.BranchChannelID = &bcId
+	}
+
+	if reportPayload.PayloadDate != "" {
+		date, err := time.Parse("2006-01-02", reportPayload.PayloadDate)
+		if err != nil {
+			fmt.Println("MASUK SINI")
+			fmt.Println(err)
+		} else {
+			reportPayload.Date = date.Format("2006-01-02")
+		}
+	}
+
+	serviceResult := h.openApiService.GetItemAvailabilityReports(reportPayload)
 	if serviceResult.Errors.HasErrors() {
 		h.deliverError(c, serviceResult.Errors)
 		return
