@@ -10,8 +10,8 @@ type ItemAvailabilityReport struct {
 	ItemSlug               string    `db:"item_slug" json:"item_slug"`
 	ItemName               string    `db:"item_name" json:"item_name"`
 	Date                   string    `db:"date" json:"date"`
-	ActiveTime             string    `db:"active_time" json:"active_time"`
-	InactiveTime           string    `db:"inactive_time" json:"inactive_time"`
+	ActiveTime             int       `db:"active_time" json:"active_time"`
+	InactiveTime           int       `db:"inactive_time" json:"inactive_time"`
 	ItemNameAtThatTime     string    `db:"item_name_at_that_time" json:"item_name_at_that_time"`
 	Timeline               string    `db:"timeline" json:"timeline"`
 	AvailabilityPercentage *float64  `db:"availability_percentage" json:"availability_percentage"`
