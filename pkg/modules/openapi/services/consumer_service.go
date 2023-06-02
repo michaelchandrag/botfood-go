@@ -121,11 +121,12 @@ func (s *service) sendWebhook(url string, payload dto.WebhookRequestPayload, bra
 			SetBody(payload).
 			SetResult(&theResult). // or SetResult(AuthSuccess{}).
 			Post(url)
-		fmt.Println(resp.StatusCode())
-		fmt.Println(resp)
 		if err != nil {
+			fmt.Println("ERROR SEND WEBHOOK")
 			fmt.Println(err)
 		}
+		fmt.Println(resp.StatusCode())
+		fmt.Println(resp)
 		logObj.ResponseBody = string(resp.Body())
 		newLog, err := logRepository.Create(logObj)
 		if err != nil {
