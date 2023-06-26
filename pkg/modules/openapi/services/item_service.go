@@ -2,9 +2,12 @@ package services
 
 import (
 	"errors"
+	"fmt"
+	"sync"
 
 	dto "github.com/michaelchandrag/botfood-go/pkg/modules/openapi/dto"
 	item_repository "github.com/michaelchandrag/botfood-go/pkg/modules/openapi/repositories/item"
+	variant_repository "github.com/michaelchandrag/botfood-go/pkg/modules/openapi/repositories/variant"
 )
 
 func (s *service) GetItems(payload dto.OpenApiItemRequestPayload) (response dto.OpenApiItemListResponse) {
@@ -26,13 +29,29 @@ func (s *service) GetItems(payload dto.OpenApiItemRequestPayload) (response dto.
 		return response
 	}
 
+	variantRepository := variant_repository.NewRepository(s.db)
+
+	var wg sync.WaitGroup
+	wg.Add(len(items.Data))
 	for key, item := range items.Data {
-		if item.PayloadInStock == 1 {
-			items.Data[key].InStock = true
-		} else if item.PayloadInStock == 0 {
-			items.Data[key].InStock = false
-		}
+		objKey := key
+		objItem := item
+		go func() {
+			vcs, err := variantRepository.FindByItemID(objItem.ID)
+			if err != nil {
+				fmt.Println(err)
+			}
+			items.Data[objKey].VariantCategories = vcs
+			if objItem.PayloadInStock == 1 {
+				items.Data[objKey].InStock = true
+			} else if objItem.PayloadInStock == 0 {
+				items.Data[objKey].InStock = false
+			}
+
+			wg.Done()
+		}()
 	}
+	wg.Wait()
 
 	response.Data.Items = items.Data
 	response.Data.CurrentPage = items.CurrentPage

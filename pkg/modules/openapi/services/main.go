@@ -12,6 +12,8 @@ type OpenApiService interface {
 	GetBranchChannelDetail(payload dto.OpenApiBranchChannelRequestPayload) (response dto.OpenApiBranchChannelDetailResponse)
 	GetReviews(payload dto.OpenApiReviewsRequestPayload) (response dto.OpenApiReviewListResponse)
 	GetItemAvailabilityReports(payload dto.OpenApiReportItemAvailabilityReportsRequestPayload) (response dto.OpenApiReportItemAvailabilityReportListResponse)
+	GetBranchChannelAvailabilityReports(payload dto.OpenApiReportBranchChannelAvailabilityReportsRequestPayload) (response dto.OpenApiReportBranchChannelAvailabilityReportListResponse)
+	GetVariants(payload dto.OpenApiVariantRequestPayload) (response dto.OpenApiVariantListResponse)
 }
 
 type service struct {

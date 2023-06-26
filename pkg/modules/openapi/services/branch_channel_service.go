@@ -2,10 +2,13 @@ package services
 
 import (
 	"errors"
+	"sync"
 
 	dto "github.com/michaelchandrag/botfood-go/pkg/modules/openapi/dto"
 	branch_channel_repository "github.com/michaelchandrag/botfood-go/pkg/modules/openapi/repositories/branch_channel"
+	shift_repository "github.com/michaelchandrag/botfood-go/pkg/modules/openapi/repositories/branch_channel_shift"
 	item_repository "github.com/michaelchandrag/botfood-go/pkg/modules/openapi/repositories/item"
+	variant_repository "github.com/michaelchandrag/botfood-go/pkg/modules/openapi/repositories/variant"
 )
 
 func (s *service) GetBranchChannels(payload dto.OpenApiBranchChannelRequestPayload) (response dto.OpenApiBranchChannelListResponse) {
@@ -65,19 +68,56 @@ func (s *service) GetBranchChannelDetail(payload dto.OpenApiBranchChannelRequest
 		branchChannel.IsOpen = false
 	}
 
-	itemRepository := item_repository.NewRepository(s.db)
-	itemFilter := item_repository.Filter{
-		BranchChannelID: &branchChannel.ID,
-	}
-	items, err := itemRepository.FindAll(itemFilter)
-	for key, item := range items {
-		if item.PayloadInStock == 1 {
-			items[key].InStock = true
-		} else if item.PayloadInStock == 0 {
-			items[key].InStock = false
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		itemRepository := item_repository.NewRepository(s.db)
+		itemFilter := item_repository.Filter{
+			BranchChannelID: &branchChannel.ID,
 		}
-	}
-	branchChannel.Items = items
+		items, _ := itemRepository.FindAll(itemFilter)
+		for key, item := range items {
+			if item.PayloadInStock == 1 {
+				items[key].InStock = true
+			} else if item.PayloadInStock == 0 {
+				items[key].InStock = false
+			}
+		}
+		branchChannel.Items = items
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		shiftRepository := shift_repository.NewRepository(s.db)
+		shiftFilter := shift_repository.Filter{
+			BranchChannelID: &branchChannel.ID,
+		}
+		shifts, _ := shiftRepository.FindAllGrouped(shiftFilter)
+		branchChannel.GroupedShifts = shifts
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		variantRepository := variant_repository.NewRepository(s.db)
+		variantFilter := variant_repository.Filter{
+			BranchChannelID: &branchChannel.ID,
+		}
+		variants, _ := variantRepository.FindAll(variantFilter)
+		for key, variant := range variants {
+			if variant.PayloadInStock == 1 {
+				variants[key].InStock = true
+			} else if variant.PayloadInStock == 0 {
+				variants[key].InStock = false
+			}
+		}
+		branchChannel.Variants = variants
+	}()
+
+	wg.Wait()
 
 	response.Data = branchChannel
 

@@ -14,6 +14,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/nullism/bqb v1.3.1
 	go.uber.org/zap v1.21.0
+	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
 )
 
 require (

@@ -244,7 +244,6 @@ func (h *Handler) GetOpenApiItemAvailabilityReportListAction(c *gin.Context) {
 	if reportPayload.PayloadDate != "" {
 		date, err := time.Parse("2006-01-02", reportPayload.PayloadDate)
 		if err != nil {
-			fmt.Println("MASUK SINI")
 			fmt.Println(err)
 		} else {
 			reportPayload.Date = date.Format("2006-01-02")
@@ -252,6 +251,99 @@ func (h *Handler) GetOpenApiItemAvailabilityReportListAction(c *gin.Context) {
 	}
 
 	serviceResult := h.openApiService.GetItemAvailabilityReports(reportPayload)
+	if serviceResult.Errors.HasErrors() {
+		h.deliverError(c, serviceResult.Errors)
+		return
+	}
+
+	h.deliverJSON(c, serviceResult.Data)
+	return
+}
+
+func (h *Handler) GetOpenApiBranchChannelAvailabilityReportListAction(c *gin.Context) {
+
+	var customError error.ErrorCollection
+	authBrand, existsAuthBrand := c.Get("open_api_brand")
+	if !existsAuthBrand {
+		customError.AddHTTPError(401, errors.New("Unauthorized. Missing partner"))
+		h.deliverError(c, customError)
+		return
+	}
+
+	brand := authBrand.(entities.Brand)
+
+	var reportPayload dto.OpenApiReportBranchChannelAvailabilityReportsRequestPayload
+	c.Bind(&reportPayload)
+	authBrandID := int(brand.ID)
+	reportPayload.BrandID = &authBrandID
+
+	if reportPayload.PayloadBranchChannelID != "" {
+		bcId, _ := strconv.Atoi(reportPayload.PayloadBranchChannelID)
+		reportPayload.BranchChannelID = &bcId
+	}
+
+	if reportPayload.PayloadDate != "" {
+		date, err := time.Parse("2006-01-02", reportPayload.PayloadDate)
+		if err != nil {
+			fmt.Println(err)
+		} else {
+			reportPayload.Date = date.Format("2006-01-02")
+		}
+	}
+
+	serviceResult := h.openApiService.GetBranchChannelAvailabilityReports(reportPayload)
+	if serviceResult.Errors.HasErrors() {
+		h.deliverError(c, serviceResult.Errors)
+		return
+	}
+
+	h.deliverJSON(c, serviceResult.Data)
+	return
+}
+
+func (h *Handler) GetOpenApiVariantListAction(c *gin.Context) {
+
+	var customError error.ErrorCollection
+	authBrand, existsAuthBrand := c.Get("open_api_brand")
+	if !existsAuthBrand {
+		customError.AddHTTPError(401, errors.New("Unauthorized. Missing partner"))
+		h.deliverError(c, customError)
+		return
+	}
+
+	brand := authBrand.(entities.Brand)
+
+	var variantPayload dto.OpenApiVariantRequestPayload
+	c.Bind(&variantPayload)
+	authBrandID := int(brand.ID)
+	variantPayload.BrandID = &authBrandID
+
+	if len(variantPayload.PayloadBranchChannelID) > 0 {
+		branchChannelID, _ := strconv.Atoi(variantPayload.PayloadBranchChannelID)
+		variantPayload.BranchChannelID = &branchChannelID
+	}
+
+	if len(variantPayload.PayloadVariantCategoryID) > 0 {
+		variantCategoryID, _ := strconv.Atoi(variantPayload.PayloadVariantCategoryID)
+		variantPayload.VariantCategoryID = &variantCategoryID
+	}
+
+	if len(variantPayload.PayloadInStock) > 0 {
+		inStock, _ := strconv.Atoi(variantPayload.PayloadInStock)
+		variantPayload.InStock = &inStock
+	}
+
+	page, err := strconv.Atoi(variantPayload.PayloadPage)
+	if err == nil {
+		variantPayload.Page = &page
+	}
+
+	data, err := strconv.Atoi(variantPayload.PayloadData)
+	if err == nil {
+		variantPayload.Data = &data
+	}
+
+	serviceResult := h.openApiService.GetVariants(variantPayload)
 	if serviceResult.Errors.HasErrors() {
 		h.deliverError(c, serviceResult.Errors)
 		return
