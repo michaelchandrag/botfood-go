@@ -66,6 +66,7 @@ func getQueryBuilder() string {
 			branch_channels.channel as branch_channel_channel,
 			branch_channels.brand_id as brand_id,
 			reviews.rating as rating,
+			reviews.order_id,
 			reviews.comment as comment,
 			reviews.images as images,
 			reviews.item_name as item_name,

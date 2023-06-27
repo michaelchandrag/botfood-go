@@ -110,7 +110,11 @@ func (s *service) GetBranchChannelDetail(payload dto.OpenApiBranchChannelRequest
 	variantRepository := variant_repository.NewRepository(s.db)
 	variants, _ := variantRepository.FindByBranchChannelID(branchChannel.ID)
 	for _, variant := range variants {
-		bcVariants = append(bcVariants, variant.ToRaw())
+		idxVariant := slices.IndexFunc(bcVariants, func(existsVariant entities.Variant) bool { return existsVariant.ID == variant.ID })
+		if idxVariant == -1 {
+			bcVariants = append(bcVariants, variant.ToRaw())
+		}
+
 		idxItem := slices.IndexFunc(branchChannel.Items, func(item entities.Item) bool { return variant.ItemVariantCategoryItemID == item.ID })
 		if idxItem == -1 {
 			// not found

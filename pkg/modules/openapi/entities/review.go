@@ -9,6 +9,7 @@ type Review struct {
 	BranchChannelChannel string `db:"branch_channel_channel" json:"branch_channel_channel"`
 	BrandID              int    `db:"brand_id" json:"-"`
 
+	OrderID         *string   `db:"order_id" json:"order_id"`
 	Rating          int       `db:"rating" json:"rating"`
 	Comment         *string   `db:"comment" json:"comment"`
 	ItemName        *string   `db:"item_name" json:"item_name"`
