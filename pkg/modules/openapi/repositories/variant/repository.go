@@ -16,6 +16,7 @@ type Repository interface {
 	FindPaginated(filter Filter) (result PaginatedData, err error)
 	FindAll(filter Filter) (variants []entities.Variant, err error)
 	FindByItemID(itemID int) (vcs []entities.VariantCategory, err error)
+	FindByBranchChannelID(branchChannelID int) (variants []entities.Variant, err error)
 }
 
 type repository struct {
@@ -269,4 +270,32 @@ func (r *repository) FindByItemID(itemID int) (vcs []entities.VariantCategory, e
 	}
 
 	return vcs, err
+}
+
+func (r *repository) FindByBranchChannelID(branchChannelID int) (variants []entities.Variant, err error) {
+	formattedQuery := fmt.Sprintf(`SELECT
+			variants.id,
+			variants.name,
+			variants.in_stock,
+			variants.price,
+			item_variant_categories.id as item_variant_category_id,
+			item_variant_categories.item_id as item_variant_category_item_id,
+			variant_categories.id as variant_category_id,
+			variant_categories.name as variant_category_name,
+			variant_categories.is_required as variant_category_is_required,
+			variant_categories.min_quantity as variant_category_min_quantity,
+			variant_categories.max_quantity as variant_category_max_quantity
+		FROM
+			variants
+		JOIN item_variant_categories ON variants.variant_category_slug = item_variant_categories.variant_category_slug AND item_variant_categories.deleted_at IS NULL
+		JOIN items on items.id = item_variant_categories.item_id AND items.deleted_at IS NULL
+		JOIN variant_categories ON variant_categories.slug = variants.variant_category_slug AND variant_categories.slug = item_variant_categories.variant_category_slug AND variant_categories.deleted_at IS NULL
+		WHERE variants.deleted_at IS NULL AND variants.branch_channel_id = %d
+	`, branchChannelID)
+	err = r.db.GetDB().Select(&variants, formattedQuery)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	return variants, err
 }

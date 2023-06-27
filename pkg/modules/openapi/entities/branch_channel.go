@@ -3,17 +3,17 @@ package entities
 import "time"
 
 type BranchChannel struct {
-	ID            int                       `json:"id" db:"id"`
-	BrandID       int                       `json:"-" db:"brand_id"`
-	Name          string                    `json:"name" db:"name"`
-	Channel       string                    `json:"channel" db:"channel"`
-	PayloadIsOpen int                       `json:"-" db:"is_open"`
-	IsOpen        bool                      `json:"is_open"`
-	Rating        *float64                  `json:"rating" db:"rating"`
-	Items         []Item                    `json:"items,omitempty"`
-	Shifts        []BranchChannelShift      `json:"shifts,omitempty"`
-	GroupedShifts GroupedBranchChannelShift `json:"timing_shifts,omitempty"`
-	Variants      []Variant                 `json:"variants,omitempty"`
+	ID            int                        `json:"id" db:"id"`
+	BrandID       int                        `json:"-" db:"brand_id"`
+	Name          string                     `json:"name" db:"name"`
+	Channel       string                     `json:"channel" db:"channel"`
+	PayloadIsOpen int                        `json:"-" db:"is_open"`
+	IsOpen        bool                       `json:"is_open"`
+	Rating        *float64                   `json:"rating" db:"rating"`
+	Items         []Item                     `json:"items,omitempty"`
+	Shifts        []BranchChannelShift       `json:"shifts,omitempty"`
+	GroupedShifts *GroupedBranchChannelShift `json:"timing_shifts,omitempty"`
+	Variants      []Variant                  `json:"variants,omitempty"`
 }
 
 type BranchChannelShift struct {
