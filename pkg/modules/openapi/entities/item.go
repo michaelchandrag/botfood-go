@@ -13,7 +13,7 @@ type Item struct {
 	SellingPrice         *int              `db:"selling_price" json:"selling_price"`
 	ImageURL             *string           `db:"image_url" json:"image_url"`
 	LastNotActiveAt      *string           `db:"last_not_active_at" json:"last_not_active_at"`
-	VariantCategories    []VariantCategory `json:"variant_categories"`
+	VariantCategories    []VariantCategory `json:"variant_categories,omitempty"`
 	CreatedAt            *string           `db:"created_at" json:"created_at"`
 	UpdatedAt            *string           `db:"updated_at" json:"updated_at"`
 }
