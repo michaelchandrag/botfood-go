@@ -5,5 +5,6 @@ import (
 )
 
 type ReportRequestPayload struct {
-	Brand entity.Brand
+	Brand     entity.Brand
+	BranchIDs []int
 }
