@@ -72,10 +72,10 @@ func (s *service) ConsumeActivityMessage(payload dto.ConsumerRequestPayload) (re
 				webhookNewItems = append(webhookNewItems, val.ToWebhookItemRequestPayload())
 			}
 			for _, val := range payload.DataItems.ItemChange {
-				webhookChangeItems = append(webhookNewItems, val.ToWebhookItemRequestPayload())
+				webhookChangeItems = append(webhookChangeItems, val.ToWebhookItemRequestPayload())
 			}
 			for _, val := range payload.DataItems.ItemDelete {
-				webhookDeletedItems = append(webhookNewItems, val.ToWebhookItemRequestPayload())
+				webhookDeletedItems = append(webhookDeletedItems, val.ToWebhookItemRequestPayload())
 			}
 			webhookDataItem.ItemNew = &webhookNewItems
 			webhookDataItem.ItemChange = &webhookChangeItems
