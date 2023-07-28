@@ -4,12 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/michaelchandrag/botfood-go/infrastructures/database"
 	"github.com/michaelchandrag/botfood-go/pkg/modules/report/dto"
 	"github.com/michaelchandrag/botfood-go/pkg/modules/report/entities"
 	branch_channel_repository "github.com/michaelchandrag/botfood-go/pkg/modules/report/repositories/branch_channel"
+	branch_channel_promotion_repository "github.com/michaelchandrag/botfood-go/pkg/modules/report/repositories/branch_channel_promotion"
 	item_repository "github.com/michaelchandrag/botfood-go/pkg/modules/report/repositories/item"
 	"github.com/michaelchandrag/botfood-go/utils"
 	"github.com/xuri/excelize/v2"
@@ -17,6 +19,7 @@ import (
 
 type ReportService interface {
 	ExportChannelReport(payload dto.ReportRequestPayload) (response dto.ChannelReportResponse)
+	ExportBrandPromotion(payload dto.ReportRequestPayload) (response dto.PromotionReportResponse)
 }
 
 type service struct {
@@ -682,5 +685,272 @@ func (s *service) ExportChannelReport(payload dto.ReportRequestPayload) (respons
 	response.Data.Items = items
 	response.Data.ChannelReportData = channelReport
 
+	return response
+}
+
+func (s *service) ExportBrandPromotion(payload dto.ReportRequestPayload) (response dto.PromotionReportResponse) {
+	if payload.Brand.ID == 0 {
+		response.Errors.AddHTTPError(400, errors.New("Brand is required"))
+		return response
+	}
+
+	payloadBrandID := int(payload.Brand.ID)
+	promotionRepository := branch_channel_promotion_repository.NewRepository(s.db)
+	promotionFilter := branch_channel_promotion_repository.Filter{
+		BrandID: &payloadBrandID,
+	}
+	promotions, err := promotionRepository.FindAll(promotionFilter)
+	if err != nil {
+		fmt.Println("ERROR PROMO VOUCHER")
+		response.Errors.AddHTTPError(500, errors.New("Internal Server Error. Please contact our team for more information"))
+		return response
+	}
+
+	var promotionGroup = make(map[string][]entities.BranchChannelPromotion)
+	for _, promotion := range promotions {
+		if _, ok := promotionGroup[promotion.BranchChannelChannel]; !ok {
+			var emptyPromotions []entities.BranchChannelPromotion
+			promotionGroup[promotion.BranchChannelChannel] = emptyPromotions
+		}
+		promotionGroup[promotion.BranchChannelChannel] = append(promotionGroup[promotion.BranchChannelChannel], promotion)
+	}
+
+	itemRepository := item_repository.NewRepository(s.db)
+	hasSellingPrice := true
+	itemDiscountFilter := item_repository.Filter{
+		BrandID:         &payloadBrandID,
+		HasSellingPrice: &hasSellingPrice,
+	}
+	itemDiscounts, err := itemRepository.FindAll(itemDiscountFilter)
+	if err != nil {
+		fmt.Println("ERROR DISKON CORET")
+		response.Errors.AddHTTPError(500, errors.New("Internal Server Error. Please contact our team for more information"))
+		return response
+	}
+	isBundle := 1
+	itemBundleFilter := item_repository.Filter{
+		BrandID:  &payloadBrandID,
+		IsBundle: &isBundle,
+	}
+	itemBundles, err := itemRepository.FindAll(itemBundleFilter)
+	if err != nil {
+		fmt.Println("ERROR BUNDLE")
+		response.Errors.AddHTTPError(500, errors.New("Internal Server Error. Please contact our team for more information"))
+		return response
+	}
+
+	// excel
+	f := excelize.NewFile()
+	defer func() {
+		if err := f.Close(); err != nil {
+			fmt.Println(err)
+		}
+	}()
+
+	voucherSheet := "PROMO VOUCHER"
+	discountSheet := "PROMO ITEM DISKON CORET"
+	bundleSheet := "PROMO ITEM BUNDLE"
+	index, err := f.NewSheet(voucherSheet)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	rawChannelHeaderVoucherStyle := utils.ExcelizeStyle{
+		Color:               "#FFA500",
+		HorizontalAlignment: "center",
+		VerticalAlignment:   "center",
+		Bold:                true,
+	}
+	channelHeaderVoucherStyle, err := f.NewStyle(rawChannelHeaderVoucherStyle.GenerateStyle())
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	rawHeaderVoucherStyle := utils.ExcelizeStyle{
+		Color:               "#FFFF00",
+		Border:              "all",
+		HorizontalAlignment: "center",
+		VerticalAlignment:   "center",
+		Bold:                true,
+	}
+	headerVoucherStyle, err := f.NewStyle(rawHeaderVoucherStyle.GenerateStyle())
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	rawCellVoucherStyle := utils.ExcelizeStyle{
+		Border:              "all",
+		HorizontalAlignment: "center",
+		VerticalAlignment:   "center",
+	}
+	cellVoucherStyle, err := f.NewStyle(rawCellVoucherStyle.GenerateStyle())
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	currentTime := time.Now()
+	f.SetCellValue(voucherSheet, "A1", "Tanggal Laporan")
+	f.SetCellValue(voucherSheet, "B1", currentTime.Format("02/Jan/2006"))
+
+	f.SetColWidth(voucherSheet, "A", "A", 40)
+	f.SetColWidth(voucherSheet, "B", "B", 40)
+	f.SetColWidth(voucherSheet, "C", "C", 50)
+	f.SetColWidth(voucherSheet, "D", "D", 50)
+	f.SetColWidth(voucherSheet, "E", "E", 20)
+	f.SetColWidth(voucherSheet, "F", "F", 25)
+	f.SetColWidth(voucherSheet, "G", "G", 25)
+	f.SetColWidth(voucherSheet, "H", "H", 25)
+	idxRow := 3
+	for channel, promotions := range promotionGroup {
+		f.SetCellValue(voucherSheet, fmt.Sprintf("A%d", idxRow), channel)
+		f.SetCellStyle(voucherSheet, fmt.Sprintf("A%d", idxRow), fmt.Sprintf("A%d", idxRow), channelHeaderVoucherStyle)
+
+		idxRow++
+		f.SetCellValue(voucherSheet, fmt.Sprintf("A%d", idxRow), "Outlet")
+		f.SetCellValue(voucherSheet, fmt.Sprintf("B%d", idxRow), "Judul Voucher")
+		f.SetCellValue(voucherSheet, fmt.Sprintf("C%d", idxRow), "Deskripsi")
+		f.SetCellValue(voucherSheet, fmt.Sprintf("D%d", idxRow), "Catatan")
+		f.SetCellValue(voucherSheet, fmt.Sprintf("E%d", idxRow), "Tipe Diskon")
+		f.SetCellValue(voucherSheet, fmt.Sprintf("F%d", idxRow), "Nilai Diskon")
+		f.SetCellValue(voucherSheet, fmt.Sprintf("G%d", idxRow), "Minimal Pembelian")
+		f.SetCellValue(voucherSheet, fmt.Sprintf("H%d", idxRow), "Maksimal Nilai Diskon")
+
+		f.SetCellStyle(voucherSheet, fmt.Sprintf("A%d", idxRow), fmt.Sprintf("H%d", idxRow), headerVoucherStyle)
+		idxRow++
+
+		for _, promotion := range promotions {
+			pr := promotion.ToReport()
+			f.SetCellValue(voucherSheet, fmt.Sprintf("A%d", idxRow), pr.BranchChannelName)
+			f.SetCellValue(voucherSheet, fmt.Sprintf("B%d", idxRow), pr.Title)
+			f.SetCellValue(voucherSheet, fmt.Sprintf("C%d", idxRow), pr.Description)
+			f.SetCellValue(voucherSheet, fmt.Sprintf("D%d", idxRow), pr.TagsInText)
+			f.SetCellValue(voucherSheet, fmt.Sprintf("E%d", idxRow), pr.DiscountType)
+			f.SetCellValue(voucherSheet, fmt.Sprintf("F%d", idxRow), pr.DiscountValue)
+			f.SetCellValue(voucherSheet, fmt.Sprintf("G%d", idxRow), pr.MinSpend)
+			f.SetCellValue(voucherSheet, fmt.Sprintf("H%d", idxRow), pr.MaxDiscountAmount)
+			f.SetCellStyle(voucherSheet, fmt.Sprintf("A%d", idxRow), fmt.Sprintf("H%d", idxRow), cellVoucherStyle)
+			idxRow++
+		}
+
+		idxRow++
+	}
+
+	_, err = f.NewSheet(discountSheet)
+
+	f.SetCellValue(discountSheet, "A1", "Tanggal Laporan")
+	f.SetCellValue(discountSheet, "B1", currentTime.Format("02/Jan/2006"))
+
+	f.SetColWidth(discountSheet, "A", "A", 30)
+	f.SetColWidth(discountSheet, "B", "B", 30)
+	f.SetColWidth(discountSheet, "C", "C", 40)
+	f.SetColWidth(discountSheet, "D", "D", 40)
+	f.SetColWidth(discountSheet, "E", "E", 25)
+	f.SetColWidth(discountSheet, "F", "F", 25)
+
+	idxRow = 3
+	f.SetCellValue(discountSheet, fmt.Sprintf("A%d", idxRow), "Outlet")
+	f.SetCellValue(discountSheet, fmt.Sprintf("B%d", idxRow), "Channel")
+	f.SetCellValue(discountSheet, fmt.Sprintf("C%d", idxRow), "Nama Item")
+	f.SetCellValue(discountSheet, fmt.Sprintf("D%d", idxRow), "Deskripsi")
+	f.SetCellValue(discountSheet, fmt.Sprintf("E%d", idxRow), "Harga Normal")
+	f.SetCellValue(discountSheet, fmt.Sprintf("F%d", idxRow), "Harga Diskon")
+	f.SetCellStyle(discountSheet, fmt.Sprintf("A%d", idxRow), fmt.Sprintf("F%d", idxRow), headerVoucherStyle)
+	idxRow++
+	for _, item := range itemDiscounts {
+		ir := item.ToReport()
+		f.SetCellValue(discountSheet, fmt.Sprintf("A%d", idxRow), ir.BranchChannelName)
+		f.SetCellValue(discountSheet, fmt.Sprintf("B%d", idxRow), ir.BranchChannelChannel)
+		f.SetCellValue(discountSheet, fmt.Sprintf("C%d", idxRow), ir.Name)
+		f.SetCellValue(discountSheet, fmt.Sprintf("D%d", idxRow), ir.Description)
+		f.SetCellValue(discountSheet, fmt.Sprintf("E%d", idxRow), ir.PriceInText)
+		f.SetCellValue(discountSheet, fmt.Sprintf("F%d", idxRow), ir.SellingPriceInText)
+
+		f.SetCellStyle(discountSheet, fmt.Sprintf("A%d", idxRow), fmt.Sprintf("F%d", idxRow), cellVoucherStyle)
+		idxRow++
+	}
+
+	_, err = f.NewSheet(bundleSheet)
+
+	f.SetCellValue(bundleSheet, "A1", "Tanggal Laporan")
+	f.SetCellValue(bundleSheet, "B1", currentTime.Format("02/Jan/2006"))
+
+	f.SetColWidth(bundleSheet, "A", "A", 30)
+	f.SetColWidth(bundleSheet, "B", "B", 30)
+	f.SetColWidth(bundleSheet, "C", "C", 40)
+	f.SetColWidth(bundleSheet, "D", "D", 40)
+	f.SetColWidth(bundleSheet, "E", "E", 25)
+	f.SetColWidth(bundleSheet, "F", "F", 25)
+
+	idxRow = 3
+	f.SetCellValue(bundleSheet, fmt.Sprintf("A%d", idxRow), "Outlet")
+	f.SetCellValue(bundleSheet, fmt.Sprintf("B%d", idxRow), "Channel")
+	f.SetCellValue(bundleSheet, fmt.Sprintf("C%d", idxRow), "Nama Item")
+	f.SetCellValue(bundleSheet, fmt.Sprintf("D%d", idxRow), "Deskripsi")
+	f.SetCellValue(bundleSheet, fmt.Sprintf("E%d", idxRow), "Variant")
+	f.SetCellValue(bundleSheet, fmt.Sprintf("F%d", idxRow), "Harga Normal")
+	f.SetCellValue(bundleSheet, fmt.Sprintf("G%d", idxRow), "Harga Diskon")
+	f.SetCellStyle(bundleSheet, fmt.Sprintf("A%d", idxRow), fmt.Sprintf("F%d", idxRow), headerVoucherStyle)
+	idxRow++
+
+	type variantDict struct {
+		IndexRow     int
+		VariantNames []string
+	}
+
+	variantMap := make(map[string]variantDict)
+	var itemIds []int
+
+	for _, item := range itemBundles {
+		ir := item.ToReport()
+
+		if item.BranchChannelChannel == entities.BRANCH_CHANNEL_CHANNEL_GOFOOD {
+			idString := strconv.Itoa(item.ID)
+			variantMap[idString] = variantDict{
+				IndexRow: idxRow,
+			}
+			itemIds = append(itemIds, item.ID)
+		}
+
+		f.SetCellValue(bundleSheet, fmt.Sprintf("A%d", idxRow), ir.BranchChannelName)
+		f.SetCellValue(bundleSheet, fmt.Sprintf("B%d", idxRow), ir.BranchChannelChannel)
+		f.SetCellValue(bundleSheet, fmt.Sprintf("C%d", idxRow), ir.Name)
+		f.SetCellValue(bundleSheet, fmt.Sprintf("D%d", idxRow), ir.Description)
+		f.SetCellValue(bundleSheet, fmt.Sprintf("F%d", idxRow), ir.PriceInText)
+		f.SetCellValue(bundleSheet, fmt.Sprintf("G%d", idxRow), ir.SellingPriceInText)
+
+		f.SetCellStyle(bundleSheet, fmt.Sprintf("A%d", idxRow), fmt.Sprintf("G%d", idxRow), cellVoucherStyle)
+		idxRow++
+	}
+
+	if len(itemBundles) > 0 {
+		variants, err := itemRepository.FindVariantByItemIDs(itemIds)
+		if err != nil {
+			response.Errors.AddHTTPError(500, errors.New("Internal Server Error. Please contact our team for more information"))
+			return response
+		}
+		for _, variant := range variants {
+			itemId := strconv.Itoa(variant.ItemID)
+			if entry, ok := variantMap[itemId]; ok {
+				entry.VariantNames = append(entry.VariantNames, variant.Name)
+				variantMap[itemId] = entry
+			}
+		}
+
+		for _, val := range variantMap {
+			f.SetCellValue(bundleSheet, fmt.Sprintf("E%d", val.IndexRow), strings.Join(val.VariantNames, ","))
+		}
+	}
+
+	f.SetActiveSheet(index)
+
+	err = f.DeleteSheet("Sheet1")
+	if err != nil {
+		fmt.Println(err)
+	}
+	response.File.Excel = f
+
+	response.Data.Promotions = promotions
+	response.Data.ItemDiscounts = itemDiscounts
+	response.Data.ItemBundles = itemBundles
 	return response
 }

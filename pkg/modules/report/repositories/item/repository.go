@@ -14,6 +14,7 @@ import (
 type Repository interface {
 	FindPaginated(filter Filter) (result PaginatedData, err error)
 	FindAll(filter Filter) (items []entities.Item, err error)
+	FindVariantByItemIDs(ids []int) (variants []entities.Variant, err error)
 }
 
 type repository struct {
@@ -33,6 +34,9 @@ type Filter struct {
 	BranchChannelChannel string
 	BranchChannelName    string
 	InStock              *int
+	IsBundle             *int
+
+	HasSellingPrice *bool
 
 	Page *int
 	Data *int
@@ -61,6 +65,7 @@ func getQueryBuilder() string {
 			branch_channels.name as branch_channel_name,
 			branch_channels.channel as branch_channel_channel,
 			items.name,
+			items.description,
 			items.in_stock,
 			items.price,
 			items.selling_price,
@@ -127,8 +132,20 @@ func generateFilter(filter Filter) string {
 		where.And("items.in_stock = ?", *filter.InStock)
 	}
 
+	if filter.IsBundle != nil {
+		where.And("items.is_bundle = ?", *filter.IsBundle)
+	}
+
 	if len(filter.BranchIDs) > 0 {
 		where.And(`branch_channels.branch_id IN (?)`, filter.BranchIDs)
+	}
+
+	if filter.HasSellingPrice != nil {
+		if *filter.HasSellingPrice {
+			where.And("items.selling_price IS NOT NULL")
+		} else if !*filter.HasSellingPrice {
+			where.And("items.selling_price IS NULL")
+		}
 	}
 
 	queryWhere, err := bqb.New("?", where).ToRaw()
@@ -215,4 +232,37 @@ func (r *repository) FindPaginated(filter Filter) (result PaginatedData, err err
 	result.TotalPage = int(math.Ceil(totalPage))
 
 	return result, err
+}
+
+func (r *repository) FindVariantByItemIDs(ids []int) (variants []entities.Variant, err error) {
+	query := fmt.Sprintf(`
+			select
+				variants.id,
+				variants.slug,
+				variants.name,
+				item_variant_categories.item_id,
+				variants.variant_category_slug,
+				variant_categories.name as variant_category_name,
+				variants.branch_channel_id,
+				variants.price,
+				variants.in_stock,
+				variants.created_at,
+				variants.updated_at
+			from item_variant_categories
+			left join variant_categories on variant_categories.slug = item_variant_categories.variant_category_slug AND variant_categories.deleted_at IS NULL
+			left join variants on variants.variant_category_slug = variant_categories.slug AND variants.variant_category_slug = item_variant_categories.variant_category_slug AND variants.deleted_at IS NULL
+	`)
+
+	where := bqb.Optional("WHERE")
+	where.And(`item_variant_categories.item_id IN (?)`, ids)
+	queryWhere, err := bqb.New("?", where).ToRaw()
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	err = r.db.GetDB().Select(&variants, query+queryWhere)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return variants, err
 }

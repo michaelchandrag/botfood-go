@@ -3,6 +3,7 @@ package repositories
 import (
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -16,7 +17,7 @@ type Repository interface {
 	FindPaginated(filter Filter) (result PaginatedData, err error)
 	FindAll(filter Filter) (variants []entities.Variant, err error)
 	FindByItemID(itemID int) (vcs []entities.VariantCategory, err error)
-	FindByBranchChannelID(branchChannelID int) (variants []entities.Variant, err error)
+	FindByBranchChannelID(branchChannelID int) (dictionary entities.DictionaryVariant, err error)
 }
 
 type repository struct {
@@ -272,30 +273,100 @@ func (r *repository) FindByItemID(itemID int) (vcs []entities.VariantCategory, e
 	return vcs, err
 }
 
-func (r *repository) FindByBranchChannelID(branchChannelID int) (variants []entities.Variant, err error) {
-	formattedQuery := fmt.Sprintf(`SELECT
-			variants.id,
-			variants.name,
-			variants.in_stock,
-			variants.price,
-			item_variant_categories.id as item_variant_category_id,
-			item_variant_categories.item_id as item_variant_category_item_id,
-			variant_categories.id as variant_category_id,
-			variant_categories.name as variant_category_name,
-			variant_categories.is_required as variant_category_is_required,
-			variant_categories.min_quantity as variant_category_min_quantity,
-			variant_categories.max_quantity as variant_category_max_quantity
-		FROM
-			variants
-		JOIN item_variant_categories ON variants.variant_category_slug = item_variant_categories.variant_category_slug AND item_variant_categories.deleted_at IS NULL
-		JOIN items on items.id = item_variant_categories.item_id AND items.deleted_at IS NULL
-		JOIN variant_categories ON variant_categories.slug = variants.variant_category_slug AND variant_categories.slug = item_variant_categories.variant_category_slug AND variant_categories.deleted_at IS NULL
-		WHERE variants.deleted_at IS NULL AND variants.branch_channel_id = %d
-	`, branchChannelID)
-	err = r.db.GetDB().Select(&variants, formattedQuery)
+func (r *repository) FindByBranchChannelID(branchChannelID int) (dictionary entities.DictionaryVariant, err error) {
+	query := fmt.Sprintf(`
+			select
+				variants.id,
+				variants.slug,
+				variants.name,
+				item_variant_categories.item_id as item_variant_category_item_id,
+				variants.variant_category_slug,
+				variant_categories.id as variant_category_id,
+				variant_categories.name as variant_category_name,
+				variant_categories.is_required as variant_category_is_required,
+				variant_categories.min_quantity as variant_category_min_quantity,
+				variant_categories.max_quantity as variant_category_max_quantity,
+				variants.branch_channel_id,
+				variants.price,
+				variants.in_stock
+			from item_variant_categories
+			join variant_categories on variant_categories.slug = item_variant_categories.variant_category_slug AND variant_categories.deleted_at IS NULL AND variant_categories.branch_channel_id = %d
+			join variants on variants.variant_category_slug = variant_categories.slug AND variants.variant_category_slug = item_variant_categories.variant_category_slug AND variants.deleted_at IS NULL AND variants.branch_channel_id = %d
+	`, branchChannelID, branchChannelID)
+
+	var itemVariants []entities.Variant
+	err = r.db.GetDB().Select(&itemVariants, query)
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	return variants, err
+	mapVariant := make(map[string]int)
+	idxMapVariant := 0
+
+	mapVariantCategory := make(map[string]int)
+	idxMapVariantCategory := 0
+
+	mapVariantCombined := make(map[string]map[string]bool)
+
+	mapItem := make(map[string]map[string]int)
+
+	dictionary.MapItem = make(map[string][]entities.VariantCategory)
+
+	for _, variant := range itemVariants {
+		variantIDString := strconv.Itoa(variant.ID)
+		if _, ok := mapVariant[variantIDString]; !ok {
+			mapVariant[variantIDString] = idxMapVariant
+			dictionary.RawVariants = append(dictionary.RawVariants, variant.ToRaw())
+			idxMapVariant++
+		}
+
+		vcIDString := strconv.Itoa(variant.VariantCategoryID)
+		if _, ok := mapVariantCategory[vcIDString]; !ok {
+			mapVariantCategory[vcIDString] = idxMapVariantCategory
+			vc := variant.ToVariantCategory()
+			vc.Variants = append(vc.Variants, variant.ToModern())
+
+			mapVariantCombined[vcIDString] = make(map[string]bool)
+			mapVariantCombined[vcIDString][variantIDString] = true
+
+			dictionary.VariantCategories = append(dictionary.VariantCategories, vc)
+			idxMapVariantCategory++
+		} else {
+			if _, oke := mapVariantCombined[vcIDString][variantIDString]; !oke {
+				theIndex := mapVariantCategory[vcIDString]
+				mapVariantCombined[vcIDString][variantIDString] = true
+				dictionary.VariantCategories[theIndex].Variants = append(dictionary.VariantCategories[theIndex].Variants, variant.ToModern())
+			}
+		}
+
+		itemIDString := strconv.Itoa(variant.ItemVariantCategoryItemID)
+		if _, ok := mapItem[itemIDString]; !ok {
+			// item tidak ada di map
+			vc := variant.ToVariantCategory()
+			vc.Variants = append(vc.Variants, variant.ToModern())
+
+			var emptyVc []entities.VariantCategory
+			dictionary.MapItem[itemIDString] = emptyVc
+			dictionary.MapItem[itemIDString] = append(dictionary.MapItem[itemIDString], vc)
+
+			mapItem[itemIDString] = make(map[string]int)
+			mapItem[itemIDString][vcIDString] = 0
+		} else {
+			// item ada di map
+			if _, oke := mapItem[itemIDString][vcIDString]; !oke {
+				// variant category tidak ada di map
+				vc := variant.ToVariantCategory()
+				vc.Variants = append(vc.Variants, variant.ToModern())
+				nextIndex := len(mapItem[itemIDString])
+				dictionary.MapItem[itemIDString] = append(dictionary.MapItem[itemIDString], vc)
+				mapItem[itemIDString][vcIDString] = nextIndex
+			} else {
+				// variant category ada di map
+				theIndex := mapItem[itemIDString][vcIDString]
+				dictionary.MapItem[itemIDString][theIndex].Variants = append(dictionary.MapItem[itemIDString][theIndex].Variants, variant.ToModern())
+			}
+		}
+	}
+
+	return dictionary, err
 }

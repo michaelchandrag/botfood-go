@@ -2,17 +2,14 @@ package services
 
 import (
 	"errors"
-	"fmt"
+	"strconv"
 	"sync"
 
 	dto "github.com/michaelchandrag/botfood-go/pkg/modules/openapi/dto"
-	entities "github.com/michaelchandrag/botfood-go/pkg/modules/openapi/entities"
 	branch_channel_repository "github.com/michaelchandrag/botfood-go/pkg/modules/openapi/repositories/branch_channel"
 	shift_repository "github.com/michaelchandrag/botfood-go/pkg/modules/openapi/repositories/branch_channel_shift"
 	item_repository "github.com/michaelchandrag/botfood-go/pkg/modules/openapi/repositories/item"
 	variant_repository "github.com/michaelchandrag/botfood-go/pkg/modules/openapi/repositories/variant"
-
-	"golang.org/x/exp/slices"
 )
 
 func (s *service) GetBranchChannels(payload dto.OpenApiBranchChannelRequestPayload) (response dto.OpenApiBranchChannelListResponse) {
@@ -105,50 +102,19 @@ func (s *service) GetBranchChannelDetail(payload dto.OpenApiBranchChannelRequest
 
 	wg.Wait()
 
-	var bcVariants []entities.Variant
-
 	variantRepository := variant_repository.NewRepository(s.db)
 	variants, _ := variantRepository.FindByBranchChannelID(branchChannel.ID)
-	for _, variant := range variants {
-		idxVariant := slices.IndexFunc(bcVariants, func(existsVariant entities.Variant) bool { return existsVariant.ID == variant.ID })
-		if idxVariant == -1 {
-			bcVariants = append(bcVariants, variant.ToRaw())
-		}
 
-		idxItem := slices.IndexFunc(branchChannel.Items, func(item entities.Item) bool { return variant.ItemVariantCategoryItemID == item.ID })
-		if idxItem == -1 {
-			// not found
-			fmt.Println("ITEM NOT FOUND!!!")
-			fmt.Println(variant)
-		} else {
-			// exists
-			idxVc := slices.IndexFunc(branchChannel.Items[idxItem].VariantCategories, func(vc entities.VariantCategory) bool { return vc.ID == variant.VariantCategoryID })
-			if idxVc == -1 {
-				// not found
-				isRequired := false
-				if variant.VariantCategoryIsRequired == 1 {
-					isRequired = true
-				} else {
-					isRequired = false
-				}
-				var mvs []entities.ModernVariant
-				mvs = append(mvs, variant.ToModern())
-				vc := entities.VariantCategory{
-					ID:          variant.VariantCategoryID,
-					Name:        variant.VariantCategoryName,
-					IsRequired:  isRequired,
-					MinQuantity: variant.VariantCategoryMinQuantity,
-					MaxQuantity: variant.VariantCategoryMaxQuantity,
-					Variants:    mvs,
-				}
-				branchChannel.Items[idxItem].VariantCategories = append(branchChannel.Items[idxItem].VariantCategories, vc)
-			} else {
-				// exists
-				branchChannel.Items[idxItem].VariantCategories[idxVc].Variants = append(branchChannel.Items[idxItem].VariantCategories[idxVc].Variants, variant.ToModern())
-			}
+	variantMapItem := variants.MapItem
+	for key, item := range branchChannel.Items {
+		itemIDString := strconv.Itoa(item.ID)
+		if _, ok := variantMapItem[itemIDString]; ok {
+			branchChannel.Items[key].VariantCategories = variantMapItem[itemIDString]
 		}
 	}
-	branchChannel.Variants = bcVariants
+
+	branchChannel.Variants = variants.RawVariants
+	branchChannel.VariantCategories = variants.VariantCategories
 
 	response.Data = branchChannel
 

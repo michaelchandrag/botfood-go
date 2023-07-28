@@ -37,6 +37,12 @@ type ModernVariant struct {
 	Price   *int   `db:"price" json:"price"`
 }
 
+type DictionaryVariant struct {
+	VariantCategories []VariantCategory
+	RawVariants       []Variant
+	MapItem           map[string][]VariantCategory
+}
+
 func (v *Variant) ToModern() (modern ModernVariant) {
 	inStock := false
 	if v.PayloadInStock == 0 {
@@ -67,4 +73,23 @@ func (v *Variant) ToRaw() (variant Variant) {
 		InStock:             inStock,
 		Price:               v.Price,
 	}
+}
+
+func (v *Variant) ToVariantCategory() (vc VariantCategory) {
+	var vs []ModernVariant
+	isRequired := false
+	if v.VariantCategoryIsRequired == 1 {
+		isRequired = true
+	} else {
+		isRequired = false
+	}
+	vc = VariantCategory{
+		ID:          v.VariantCategoryID,
+		Name:        v.VariantCategoryName,
+		IsRequired:  isRequired,
+		MinQuantity: v.VariantCategoryMinQuantity,
+		MaxQuantity: v.VariantCategoryMaxQuantity,
+		Variants:    vs,
+	}
+	return vc
 }

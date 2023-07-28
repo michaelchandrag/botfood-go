@@ -23,3 +23,15 @@ type ChannelReportResponse struct {
 	}
 	Errors error.ErrorCollection `json:"errors"`
 }
+
+type PromotionReportResponse struct {
+	Data struct {
+		Promotions    []entities.BranchChannelPromotion `json:"promotions"`
+		ItemDiscounts []entities.Item                   `json:"item_discounts"`
+		ItemBundles   []entities.Item                   `json:"item_bundles"`
+	} `json:"data"`
+	File struct {
+		Excel *excelize.File
+	}
+	Errors error.ErrorCollection `json:"errors"`
+}
