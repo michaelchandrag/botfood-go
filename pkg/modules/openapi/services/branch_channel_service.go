@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	dto "github.com/michaelchandrag/botfood-go/pkg/modules/openapi/dto"
+	"github.com/michaelchandrag/botfood-go/pkg/modules/openapi/entities"
 	branch_channel_repository "github.com/michaelchandrag/botfood-go/pkg/modules/openapi/repositories/branch_channel"
 	shift_repository "github.com/michaelchandrag/botfood-go/pkg/modules/openapi/repositories/branch_channel_shift"
 	item_repository "github.com/michaelchandrag/botfood-go/pkg/modules/openapi/repositories/item"
@@ -78,7 +79,10 @@ func (s *service) GetBranchChannelDetail(payload dto.OpenApiBranchChannelRequest
 		itemFilter := item_repository.Filter{
 			BranchChannelID: &branchChannel.ID,
 		}
-		items, _ := itemRepository.FindAll(itemFilter)
+		items, err := itemRepository.FindAll(itemFilter)
+		if err != nil {
+			response.Errors.AddHTTPError(500, errors.New("Internal Server Error. Please contact our team for more information"))
+		}
 		for key, item := range items {
 			if item.PayloadInStock == 1 {
 				items[key].InStock = true
@@ -96,14 +100,29 @@ func (s *service) GetBranchChannelDetail(payload dto.OpenApiBranchChannelRequest
 		shiftFilter := shift_repository.Filter{
 			BranchChannelID: &branchChannel.ID,
 		}
-		shifts, _ := shiftRepository.FindAllGrouped(shiftFilter)
+		shifts, err := shiftRepository.FindAllGrouped(shiftFilter)
+		if err != nil {
+			response.Errors.AddHTTPError(500, errors.New("Internal Server Error. Please contact our team for more information"))
+		}
 		branchChannel.GroupedShifts = &shifts
+	}()
+
+	var variants entities.DictionaryVariant
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		variantRepository := variant_repository.NewRepository(s.db)
+		variants, err = variantRepository.FindByBranchChannelID(branchChannel.ID)
+		if err != nil {
+			response.Errors.AddHTTPError(500, errors.New("Internal Server Error. Please contact our team for more information"))
+		}
 	}()
 
 	wg.Wait()
 
-	variantRepository := variant_repository.NewRepository(s.db)
-	variants, _ := variantRepository.FindByBranchChannelID(branchChannel.ID)
+	if response.Errors.HasErrors() {
+		return response
+	}
 
 	variantMapItem := variants.MapItem
 	for key, item := range branchChannel.Items {
