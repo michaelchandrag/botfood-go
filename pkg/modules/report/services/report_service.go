@@ -889,7 +889,7 @@ func (s *service) ExportBrandPromotion(payload dto.ReportRequestPayload) (respon
 	f.SetCellValue(bundleSheet, fmt.Sprintf("E%d", idxRow), "Variant")
 	f.SetCellValue(bundleSheet, fmt.Sprintf("F%d", idxRow), "Harga Normal")
 	f.SetCellValue(bundleSheet, fmt.Sprintf("G%d", idxRow), "Harga Diskon")
-	f.SetCellStyle(bundleSheet, fmt.Sprintf("A%d", idxRow), fmt.Sprintf("F%d", idxRow), headerVoucherStyle)
+	f.SetCellStyle(bundleSheet, fmt.Sprintf("A%d", idxRow), fmt.Sprintf("G%d", idxRow), headerVoucherStyle)
 	idxRow++
 
 	type variantDict struct {
