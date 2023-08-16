@@ -19,6 +19,7 @@ func (serverHTTP *ServerHTTP) registerRoutes(h handlers.Handler) {
 	report.Use(handlers.BasicMiddleware(h))
 	report.GET("/channel_report", h.GetChannelReportAction)
 	report.GET("/promotion", h.GetPromotionReportAction)
+	report.GET("/atp", h.GetATPReportAction)
 
 	openApi := serverHTTP.Router.Group("/boa/v1")
 	openApi.POST("/consume_message_queue", h.PostConsumeMessageQueueAction)

@@ -11,6 +11,7 @@ import (
 	"github.com/michaelchandrag/botfood-go/pkg/modules/report/dto"
 	"github.com/michaelchandrag/botfood-go/pkg/modules/report/entities"
 	branch_channel_repository "github.com/michaelchandrag/botfood-go/pkg/modules/report/repositories/branch_channel"
+	branch_channel_availability_report_repository "github.com/michaelchandrag/botfood-go/pkg/modules/report/repositories/branch_channel_availability_report"
 	branch_channel_promotion_repository "github.com/michaelchandrag/botfood-go/pkg/modules/report/repositories/branch_channel_promotion"
 	item_repository "github.com/michaelchandrag/botfood-go/pkg/modules/report/repositories/item"
 	"github.com/michaelchandrag/botfood-go/utils"
@@ -20,6 +21,7 @@ import (
 type ReportService interface {
 	ExportChannelReport(payload dto.ReportRequestPayload) (response dto.ChannelReportResponse)
 	ExportBrandPromotion(payload dto.ReportRequestPayload) (response dto.PromotionReportResponse)
+	ExportATPReport(payload dto.ReportRequestPayload) (response dto.ATPReportResponse)
 }
 
 type service struct {
@@ -952,5 +954,262 @@ func (s *service) ExportBrandPromotion(payload dto.ReportRequestPayload) (respon
 	response.Data.Promotions = promotions
 	response.Data.ItemDiscounts = itemDiscounts
 	response.Data.ItemBundles = itemBundles
+	return response
+}
+
+func (s *service) ExportATPReport(payload dto.ReportRequestPayload) (response dto.ATPReportResponse) {
+
+	if payload.Brand.ID == 0 {
+		response.Errors.AddHTTPError(400, errors.New("Brand is required"))
+		return response
+	}
+	payloadBrandID := int(payload.Brand.ID)
+
+	bcReportRepository := branch_channel_availability_report_repository.NewRepository(s.db)
+	bcReportFilter := branch_channel_availability_report_repository.Filter{
+		BrandID: &payloadBrandID,
+		Date:    payload.Date,
+	}
+	bcReports, err := bcReportRepository.FindAll(bcReportFilter)
+	if err != nil {
+		response.Errors.AddHTTPError(500, errors.New("Internal Server Error. Please contact our team for more information"))
+		return response
+	}
+	fmt.Println(bcReports)
+
+	// excel
+	f := excelize.NewFile()
+	defer func() {
+		if err := f.Close(); err != nil {
+			fmt.Println(err)
+		}
+	}()
+
+	currentTime, err := time.Parse("2006-01-02", payload.Date)
+	if err != nil {
+		response.Errors.AddHTTPError(500, errors.New("Internal Server Error. Please contact our team for more information"))
+		return response
+	}
+	gofoodChannel := entities.BRANCH_CHANNEL_CHANNEL_GOFOOD
+	grabfoodChannel := entities.BRANCH_CHANNEL_CHANNEL_GRABFOOD
+	shopeefoodChannel := entities.BRANCH_CHANNEL_CHANNEL_SHOPEEFOOD
+
+	index, err := f.NewSheet(gofoodChannel)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	_, err = f.NewSheet(grabfoodChannel)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	_, err = f.NewSheet(shopeefoodChannel)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	rawGreenStyle := utils.ExcelizeStyle{
+		Color: "#32CD32",
+	}
+	greenStyle, err := f.NewStyle(rawGreenStyle.GenerateStyle())
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	rawRedStyle := utils.ExcelizeStyle{
+		Color: "#FF0000",
+	}
+	redStyle, err := f.NewStyle(rawRedStyle.GenerateStyle())
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	rawGrayStyle := utils.ExcelizeStyle{
+		Color: "#DCDCDC",
+	}
+	grayStyle, err := f.NewStyle(rawGrayStyle.GenerateStyle())
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	rawYellowStyle := utils.ExcelizeStyle{
+		Color: "#FFFF00",
+	}
+	yellowStyle, err := f.NewStyle(rawYellowStyle.GenerateStyle())
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	rawHeaderStyle := utils.ExcelizeStyle{
+		Border:              "all",
+		HorizontalAlignment: "center",
+		VerticalAlignment:   "center",
+	}
+	headerStyle, err := f.NewStyle(rawHeaderStyle.GenerateStyle())
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	/* rawOutletStyle := utils.ExcelizeStyle{
+		Color:               "#000000",
+		Border:              "all",
+		HorizontalAlignment: "center",
+		VerticalAlignment:   "center",
+		FontColor:           "#FFFFFF",
+	}
+	outletStyle, err := f.NewStyle(rawOutletStyle.GenerateStyle())
+	if err != nil {
+		fmt.Println(err)
+	} */
+
+	/* rawCellVerticalStyle := utils.ExcelizeStyle{
+		VerticalAlignment:   "center",
+		HorizontalAlignment: "center",
+		Border:              "all",
+	}
+
+	cellVerticalStyle, err := f.NewStyle(rawCellVerticalStyle.GenerateStyle())
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	rawCellHorizontalStyle := utils.ExcelizeStyle{
+		VerticalAlignment:   "center",
+		HorizontalAlignment: "center",
+		Border:              "all",
+		TextRotation:        90,
+	}
+
+	cellHorizontalStyle, err := f.NewStyle(rawCellHorizontalStyle.GenerateStyle())
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	rawCellRedStyle := utils.ExcelizeStyle{
+		Color:               "#FF0000",
+		Border:              "all",
+		HorizontalAlignment: "center",
+		VerticalAlignment:   "center",
+	}
+	cellRedStyle, err := f.NewStyle(rawCellRedStyle.GenerateStyle())
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	rawCellGreenStyle := utils.ExcelizeStyle{
+		Color:               "#32CD32",
+		Border:              "all",
+		HorizontalAlignment: "center",
+		VerticalAlignment:   "center",
+	}
+	cellGreenStyle, err := f.NewStyle(rawCellGreenStyle.GenerateStyle())
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	rawCellGrayStyle := utils.ExcelizeStyle{
+		Color:               "#DCDCDC",
+		Border:              "all",
+		HorizontalAlignment: "center",
+		VerticalAlignment:   "center",
+	}
+	cellGrayStyle, err := f.NewStyle(rawCellGrayStyle.GenerateStyle())
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	rawCellTotalStyle := utils.ExcelizeStyle{
+		Border:              "all",
+		HorizontalAlignment: "center",
+		VerticalAlignment:   "center",
+		Bold:                true,
+	}
+	cellTotalStyle, err := f.NewStyle(rawCellTotalStyle.GenerateStyle())
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	rawHeaderHorizontalStyle := utils.ExcelizeStyle{
+		Color:               "#FFFF00",
+		Border:              "all",
+		HorizontalAlignment: "center",
+		VerticalAlignment:   "center",
+		Bold:                true,
+		TextRotation:        90,
+	}
+	cellHeaderHorizontalStyle, err := f.NewStyle(rawHeaderHorizontalStyle.GenerateStyle())
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	rawAllPercentageStyle := utils.ExcelizeStyle{
+		Color:               "#FFFF00",
+		Border:              "all",
+		HorizontalAlignment: "center",
+		VerticalAlignment:   "center",
+		Bold:                true,
+	}
+	allPercentageStyle, err := f.NewStyle(rawAllPercentageStyle.GenerateStyle())
+	if err != nil {
+		fmt.Println(err)
+	} */
+
+	f.SetCellValue(gofoodChannel, "A1", "Channel")
+	f.SetCellValue(gofoodChannel, "B1", gofoodChannel)
+	f.SetCellValue(gofoodChannel, "A2", "Date")
+	f.SetCellValue(gofoodChannel, "B2", currentTime.Format("02/Jan/2006"))
+	f.SetCellValue(gofoodChannel, "A3", "NB: Jika salah satu item availability menunjukkan 10% - maka item tersebut available (aktif) 10% dari total 660 menit toko tersebut buka, yakni selama 66 menit.")
+	f.SetCellValue(gofoodChannel, "E1", "100%")
+	f.SetCellValue(gofoodChannel, "F1", "99%-60%")
+	f.SetCellValue(gofoodChannel, "G1", "59%-0%")
+	f.SetCellValue(gofoodChannel, "H1", "N/A")
+	f.SetCellStyle(gofoodChannel, "E1", "E1", greenStyle)
+	f.SetCellStyle(gofoodChannel, "F1", "F1", redStyle)
+	f.SetCellStyle(gofoodChannel, "G1", "G1", yellowStyle)
+	f.SetCellStyle(gofoodChannel, "H1", "H1", grayStyle)
+
+	f.SetCellValue(gofoodChannel, "A5", "Outlet")
+	f.SetCellValue(gofoodChannel, "A6", "Jam Operasional")
+	f.SetCellValue(gofoodChannel, "A7", "Timeline Botfood")
+	f.SetCellValue(gofoodChannel, "A8", "Durasi Outlet Buka (menit)")
+	f.SetCellValue(gofoodChannel, "A9", "Performa Item")
+	f.SetCellStyle(gofoodChannel, "A5", "A9", headerStyle)
+
+	f.SetColWidth(gofoodChannel, "A", "A", 25)
+
+	excelColumns := utils.GetExcelColumns()
+	gofoodIndex := 1
+	bcDictionary := make(map[string]map[string]int)
+	bcDictionary[gofoodChannel] = make(map[string]int)
+	for _, report := range bcReports {
+		if _, k := bcDictionary[report.BranchChannelChannel]; k {
+			if _, ok := bcDictionary[report.BranchChannelChannel][report.BranchChannelName]; !ok {
+				bcDictionary[report.BranchChannelChannel][report.BranchChannelName] = gofoodIndex
+				report.ToText()
+				f.SetCellValue(report.BranchChannelChannel, fmt.Sprintf("%s%d", excelColumns[gofoodIndex], 5), report.BranchChannelName)
+				f.SetCellStyle(report.BranchChannelChannel, fmt.Sprintf("%s%d", excelColumns[gofoodIndex], 5), fmt.Sprintf("%s%d", excelColumns[gofoodIndex], 5), headerStyle)
+				f.SetCellValue(report.BranchChannelChannel, fmt.Sprintf("%s%d", excelColumns[gofoodIndex], 6), report.OperationalHours)
+				f.SetCellStyle(report.BranchChannelChannel, fmt.Sprintf("%s%d", excelColumns[gofoodIndex], 6), fmt.Sprintf("%s%d", excelColumns[gofoodIndex], 6), headerStyle)
+				f.SetCellValue(report.BranchChannelChannel, fmt.Sprintf("%s%d", excelColumns[gofoodIndex], 7), report.Timeline)
+				f.SetCellStyle(report.BranchChannelChannel, fmt.Sprintf("%s%d", excelColumns[gofoodIndex], 7), fmt.Sprintf("%s%d", excelColumns[gofoodIndex], 7), headerStyle)
+				f.SetCellValue(report.BranchChannelChannel, fmt.Sprintf("%s%d", excelColumns[gofoodIndex], 8), report.ActiveTime)
+				f.SetCellStyle(report.BranchChannelChannel, fmt.Sprintf("%s%d", excelColumns[gofoodIndex], 8), fmt.Sprintf("%s%d", excelColumns[gofoodIndex], 8), headerStyle)
+				f.SetCellValue(report.BranchChannelChannel, fmt.Sprintf("%s%d", excelColumns[gofoodIndex], 9), report.ItemAvailabilityPercentageText)
+				f.SetCellStyle(report.BranchChannelChannel, fmt.Sprintf("%s%d", excelColumns[gofoodIndex], 9), fmt.Sprintf("%s%d", excelColumns[gofoodIndex], 9), headerStyle)
+				f.SetColWidth(gofoodChannel, excelColumns[gofoodIndex], excelColumns[gofoodIndex], 40)
+				gofoodIndex++
+			}
+		}
+	}
+
+	f.SetActiveSheet(index)
+
+	err = f.DeleteSheet("Sheet1")
+	if err != nil {
+		fmt.Println(err)
+	}
+	response.File.Excel = f
+
 	return response
 }

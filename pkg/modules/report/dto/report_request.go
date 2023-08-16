@@ -6,5 +6,6 @@ import (
 
 type ReportRequestPayload struct {
 	Brand     entity.Brand
+	Date      string `form:"date"`
 	BranchIDs []int
 }

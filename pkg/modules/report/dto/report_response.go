@@ -35,3 +35,12 @@ type PromotionReportResponse struct {
 	}
 	Errors error.ErrorCollection `json:"errors"`
 }
+
+type ATPReportResponse struct {
+	Data struct {
+	} `json:"data"`
+	File struct {
+		Excel *excelize.File
+	}
+	Errors error.ErrorCollection `json:"errors"`
+}
