@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/go-resty/resty/v2"
 
 	"github.com/michaelchandrag/botfood-go/pkg/modules/openapi/dto"
 	"github.com/michaelchandrag/botfood-go/pkg/modules/openapi/entities"
+	branch_channel_repository "github.com/michaelchandrag/botfood-go/pkg/modules/openapi/repositories/branch_channel"
 	brand_repository "github.com/michaelchandrag/botfood-go/pkg/modules/openapi/repositories/brand"
 	message_queue_repository "github.com/michaelchandrag/botfood-go/pkg/modules/openapi/repositories/message_queue"
 	webhook_log_repository "github.com/michaelchandrag/botfood-go/pkg/modules/openapi/repositories/webhook_log"
@@ -83,7 +85,9 @@ func (s *service) ConsumeActivityMessage(payload dto.ConsumerRequestPayload) (re
 			webhookBody.DataItems = &webhookDataItem
 		}
 
-		go s.sendWebhook(*existsBrand.WebhookURL, webhookBody, existsBrand)
+		if existsBrand.WebhookURL != nil {
+			go s.sendWebhook(*existsBrand.WebhookURL, webhookBody, existsBrand)
+		}
 
 	} else {
 		response.Errors.AddHTTPError(400, errors.New("Message Queue already exists"))
@@ -104,6 +108,84 @@ func (s *service) sendWebhook(url string, payload dto.WebhookRequestPayload, bra
 		RequestURL:  url,
 		RequestBody: string(requestBody),
 	}
+
+	// start of custom sagala
+	if brand.Slug == "sagala" {
+		if payload.Type == "activity-outlet" {
+			var listIds []int
+			var myOutlets []dto.WebhookOutletRequestPayload
+			if payload.DataOutlets != nil {
+				myOutlets = *payload.DataOutlets
+			}
+			for _, outlet := range myOutlets {
+				if outlet.IsOpen == false {
+					listIds = append(listIds, outlet.BranchChannelID)
+				}
+			}
+
+			bcRepository := branch_channel_repository.NewRepository(s.db)
+			issuedOutlets, err := bcRepository.FindWithCurrentShift(listIds)
+			if err != nil {
+				fmt.Println(err)
+			}
+			var compiledMessage string
+			for key, outlet := range issuedOutlets {
+				if outlet.BranchChannelShiftID != nil {
+					// means outlet is in operational hours with current time
+					theMessage := fmt.Sprintf("Hallo <@&1140963097494962298> your store is closed - %s %s \n", outlet.Name, outlet.Channel)
+					sendWebhook := false
+					appendAfterSendWebhook := false
+					if len(compiledMessage)+len(theMessage) <= 2000 {
+						compiledMessage += theMessage
+					} else {
+						sendWebhook = true
+						appendAfterSendWebhook = true
+					}
+
+					if key == len(issuedOutlets)-1 {
+						sendWebhook = true
+					}
+
+					if sendWebhook {
+						type discordPayload struct {
+							Content string `json:"content"`
+						}
+
+						var payload discordPayload
+						payload.Content = compiledMessage
+
+						requestBody, _ = json.Marshal(payload)
+						logObj.RequestBody = string(requestBody)
+						var theResult interface{}
+						client := resty.New()
+						resp, err := client.R().
+							SetHeader("Content-Type", "application/json").
+							SetBody(payload).
+							SetResult(&theResult). // or SetResult(AuthSuccess{}).
+							Post(url)
+						if err != nil {
+							fmt.Println("ERROR SEND WEBHOOK")
+							fmt.Println(err)
+						}
+						httpStatusCode := strconv.Itoa(resp.StatusCode())
+						logObj.ResponseBody = string(resp.Body())
+						logObj.HTTPResponseCode = &httpStatusCode
+						_, err = logRepository.Create(logObj)
+						if err != nil {
+							fmt.Println(err)
+						}
+					}
+
+					if appendAfterSendWebhook {
+						compiledMessage = theMessage
+					}
+
+				}
+			}
+		}
+		return
+	}
+	// end of custom sagala
 
 	trials := [3]int{0, 1, 2}
 	for _, secs := range trials {
@@ -127,7 +209,9 @@ func (s *service) sendWebhook(url string, payload dto.WebhookRequestPayload, bra
 		}
 		fmt.Println(resp.StatusCode())
 		fmt.Println(resp)
+		httpStatusCode := strconv.Itoa(resp.StatusCode())
 		logObj.ResponseBody = string(resp.Body())
+		logObj.HTTPResponseCode = &httpStatusCode
 		newLog, err := logRepository.Create(logObj)
 		if err != nil {
 			fmt.Println(err)

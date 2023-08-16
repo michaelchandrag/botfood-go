@@ -6,15 +6,18 @@ import (
 	"math"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/michaelchandrag/botfood-go/infrastructures/database"
 	"github.com/michaelchandrag/botfood-go/pkg/modules/openapi/entities"
+	"github.com/michaelchandrag/botfood-go/utils"
 	bqb "github.com/nullism/bqb"
 )
 
 type Repository interface {
 	FindPaginated(filter Filter) (result PaginatedData, err error)
 	FindOne(filter Filter) (branchChannel entities.BranchChannel, err error)
+	FindWithCurrentShift(listBcIds []int) (branchChannels []entities.BranchChannel, err error)
 }
 
 type repository struct {
@@ -22,7 +25,8 @@ type repository struct {
 }
 
 type Filter struct {
-	ID        *int
+	ID *int
+
 	BrandID   *int
 	SortKey   string
 	SortValue string
@@ -193,4 +197,37 @@ func (r *repository) FindOne(filter Filter) (branchChannel entities.BranchChanne
 		fmt.Println(err)
 	}
 	return branchChannel, err
+}
+
+func (r *repository) FindWithCurrentShift(listBcIds []int) (branchChannels []entities.BranchChannel, err error) {
+	if len(listBcIds) <= 0 {
+		return branchChannels, err
+	}
+	now := time.Now()
+	query := fmt.Sprintf(`
+		SELECT
+			branch_channels.id,
+			branch_channels.name,
+			branch_channels.channel,
+			branch_channels.is_open,
+			branch_channel_shifts.id as branch_channel_shift_id,
+			branch_channel_shifts.day as branch_channel_shift_day,
+			branch_channel_shifts.open_time as branch_channel_shift_open_time,
+			branch_channel_shifts.close_time as branch_channel_shift_close_time
+		FROM branch_channels
+		LEFT JOIN branch_channel_shifts ON branch_channel_shifts.branch_channel_id = branch_channels.id AND branch_channel_shifts.day = %d AND branch_channel_shifts.deleted_at IS NULL AND branch_channel_shifts.open_time <= '%s' AND '%s' <= branch_channel_shifts.close_time
+	`, utils.GetCurrentDayOfWeek(), now.Format("15:04:05"), now.Format("15:04:05"))
+	where := bqb.Optional("WHERE")
+	where.And("branch_channels.deleted_at IS NULL")
+	if len(listBcIds) > 0 {
+		where.And(`branch_channels.id IN (?)`, listBcIds)
+	}
+
+	queryWhere, err := bqb.New("?", where).ToRaw()
+	formattedQuery := query + queryWhere
+	err = r.db.GetDB().Select(&branchChannels, formattedQuery)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return branchChannels, err
 }
