@@ -32,6 +32,7 @@ type Filter struct {
 	WithImages        bool
 	IsReviewed        bool
 	WithMerchantReply bool
+	InTags            []string
 
 	FromCreatedAt  string
 	UntilCreatedAt string
@@ -65,6 +66,7 @@ func getQueryBuilder() string {
 			branch_channels.brand_id as brand_id,
 			reviews.rating as rating,
 			reviews.comment as comment,
+			reviews.tags,
 			reviews.images as images,
 			reviews.item_name as item_name,
 			reviews.merchant_reply as merchant_reply,
@@ -141,6 +143,13 @@ func generateFilter(filter Filter) string {
 
 	if len(filter.BranchIDs) > 0 {
 		where.And(`branch_channels.branch_id IN (?)`, filter.BranchIDs)
+	}
+
+	if len(filter.InTags) > 0 {
+		for _, tag := range filter.InTags {
+			q := "%" + tag + "%"
+			where.And(`reviews.tags LIKE ?`, q)
+		}
 	}
 
 	queryWhere, err := bqb.New("?", where).ToRaw()

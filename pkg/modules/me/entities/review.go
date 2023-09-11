@@ -14,6 +14,8 @@ type Review struct {
 	ItemName        *string   `db:"item_name" json:"item_name"`
 	RawImages       *string   `db:"images" json:"-"`
 	Images          *[]string `json:"images"`
+	PayloadInTags   *string   `json:"-" db:"tags"`
+	InTags          *[]string `json:"in_tags"`
 	MerchantReply   *string   `db:"merchant_reply" json:"merchant_reply"`
 	MerchantReplyAt *string   `db:"merchant_reply_at" json:"merchant_reply_at"`
 	IsReviewed      int       `db:"is_reviewed" json:"is_reviewed"`

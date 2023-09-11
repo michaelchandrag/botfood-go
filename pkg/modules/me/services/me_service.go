@@ -41,6 +41,7 @@ func (s *service) GetReviews(payload dto.MeReviewsRequestPayload) (response dto.
 		FromCreatedAt:     payload.FromCreatedAt,
 		UntilCreatedAt:    payload.UntilCreatedAt,
 		BranchIDs:         payload.BranchIDs,
+		InTags:            payload.InTags,
 	}
 	reviews, err := reviewRepository.FindPaginated(reviewFilter)
 	if err != nil {
@@ -54,6 +55,19 @@ func (s *service) GetReviews(payload dto.MeReviewsRequestPayload) (response dto.
 			if utils.IsJSON(*review.RawImages) {
 				err = json.Unmarshal([]byte(rawImages), &reviews.Data[key].Images)
 				if err != nil {
+					fmt.Println(err)
+					response.Errors.AddHTTPError(500, err)
+					return response
+				}
+			}
+		}
+
+		if review.PayloadInTags != nil {
+			payloadInTags := *review.PayloadInTags
+			if utils.IsJSON(*review.PayloadInTags) {
+				err = json.Unmarshal([]byte(payloadInTags), &reviews.Data[key].InTags)
+				if err != nil {
+					fmt.Println("ERROR DISINI")
 					fmt.Println(err)
 					response.Errors.AddHTTPError(500, err)
 					return response

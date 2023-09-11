@@ -2,11 +2,12 @@ package dto
 
 type MeReviewsRequestPayload struct {
 	BrandID                *int
-	Keyword                string `form:"q"`
-	Rating                 *int   `form:"rating"`
-	QueryWithImages        string `form:"n_images"`
-	QueryWithComment       string `form:"n_comment"`
-	QueryWithMerchantReply string `form:"n_merchant_reply"`
+	Keyword                string   `form:"q"`
+	Rating                 *int     `form:"rating"`
+	QueryWithImages        string   `form:"n_images"`
+	QueryWithComment       string   `form:"n_comment"`
+	QueryWithMerchantReply string   `form:"n_merchant_reply"`
+	InTags                 []string `form:"in_tags[]"`
 	WithImages             bool
 	WithComment            bool
 	WithMerchantReply      bool
