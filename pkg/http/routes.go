@@ -29,6 +29,10 @@ func (serverHTTP *ServerHTTP) registerRoutes(h handlers.Handler) {
 	openApiBranchChannel.GET("/list", h.GetOpenApiBranchChannelListAction)
 	openApiBranchChannel.GET("/detail/:branch_channel_id", h.GetOpenApiBranchChannelDetailAction)
 
+	openApiPromotion := openApi.Group("/promotion")
+	openApiPromotion.Use(handlers.OpenApiMiddleware(h))
+	openApiPromotion.GET("/list", h.GetOpenApiBranchChannelPromotionListAction)
+
 	openApiItem := openApi.Group("/item")
 	openApiItem.Use(handlers.OpenApiMiddleware(h))
 	openApiItem.GET("/list", h.GetOpenApiItemListAction)

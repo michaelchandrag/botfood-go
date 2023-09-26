@@ -352,3 +352,45 @@ func (h *Handler) GetOpenApiVariantListAction(c *gin.Context) {
 	h.deliverJSON(c, serviceResult.Data)
 	return
 }
+
+func (h *Handler) GetOpenApiBranchChannelPromotionListAction(c *gin.Context) {
+
+	var customError error.ErrorCollection
+	authBrand, existsAuthBrand := c.Get("open_api_brand")
+	if !existsAuthBrand {
+		customError.AddHTTPError(401, errors.New("Unauthorized. Missing partner"))
+		h.deliverError(c, customError)
+		return
+	}
+
+	brand := authBrand.(entities.Brand)
+
+	var promotionPayload dto.OpenApiBranchChannelPromotionRequestPayload
+	c.Bind(&promotionPayload)
+	authBrandID := int(brand.ID)
+	promotionPayload.BrandID = &authBrandID
+
+	if len(promotionPayload.PayloadBranchChannelID) > 0 {
+		branchChannelID, _ := strconv.Atoi(promotionPayload.PayloadBranchChannelID)
+		promotionPayload.BranchChannelID = &branchChannelID
+	}
+
+	page, err := strconv.Atoi(promotionPayload.PayloadPage)
+	if err == nil {
+		promotionPayload.Page = &page
+	}
+
+	data, err := strconv.Atoi(promotionPayload.PayloadData)
+	if err == nil {
+		promotionPayload.Data = &data
+	}
+
+	serviceResult := h.openApiService.GetBranchChannelPromotions(promotionPayload)
+	if serviceResult.Errors.HasErrors() {
+		h.deliverError(c, serviceResult.Errors)
+		return
+	}
+
+	h.deliverJSON(c, serviceResult.Data)
+	return
+}
